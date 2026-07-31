@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NovaESP Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                primary: '#1BA69E',
+                'primary-dark': '#158A84',
+                'primary-light': '#E6F7F6',
+                'primary-50': '#F0FAF9',
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                display: ['Space Grotesk', 'sans-serif'],
+            }
+        }
+    }
+}
+</script>
+<style>
+* { -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
+.font-display { font-family: 'Space Grotesk', sans-serif; }
+.glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+.card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 40px -10px rgba(27,166,158,0.15); }
+.btn-primary { background: linear-gradient(135deg, #1BA69E 0%, #158A84 100%); transition: all 0.3s ease; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -5px rgba(27,166,158,0.4); }
+.btn-primary:active { transform: translateY(0); }
+.slide-in { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.scale-in { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); background-size: 200% 100%; animation: shimmer 2s infinite; }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.input-focus:focus { box-shadow: 0 0 0 3px rgba(27,166,158,0.2); border-color: #1BA69E; }
+.sidebar-item { transition: all 0.2s ease; }
+.sidebar-item:hover { background: rgba(27,166,158,0.08); }
+.sidebar-item.active { background: linear-gradient(135deg, rgba(27,166,158,0.15) 0%, rgba(27,166,158,0.05) 100%); border-right: 3px solid #1BA69E; }
+.status-dot { animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.number-animate { transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast { animation: toastSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes toastSlide { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.modal-overlay { animation: modalFade 0.2s ease; }
+@keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+.modal-content { animation: modalScale 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes modalScale { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.progress-bar { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+.key-card { background: linear-gradient(135deg, #1BA69E08 0%, #158A8408 100%); border: 1px solid rgba(27,166,158,0.15); }
+.premium-glow { box-shadow: 0 0 40px -10px rgba(27,166,158,0.3); }
+.grid-pattern { background-image: radial-gradient(circle, #1BA69E15 1px, transparent 1px); background-size: 24px 24px; }
+</style>
+<base target="_blank">
+</head>
+<body class="bg-gray-50 min-h-screen">
+<svg style="display:none">
+<defs>
+<symbol id="icon-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+<symbol id="icon-stock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+<symbol id="icon-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="icon-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></symbol>
+<symbol id="icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+<symbol id="icon-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+<symbol id="icon-broadcast" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></symbol>
+<symbol id="icon-log" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></symbol>
+<symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+<symbol id="icon-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+<symbol id="icon-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+<symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+<symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+<symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+<symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+<symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+<symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+<symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L1 10"/></symbol>
+<symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+<symbol id="icon-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></symbol>
+<symbol id="icon-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+<symbol id="icon-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+<symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+<symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+<symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+<symbol id="icon-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+<symbol id="icon-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></symbol>
+<symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+<symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+<symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+<symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+<symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+<symbol id="icon-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+<symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+<symbol id="icon-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+<symbol id="icon-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="icon-credit-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></symbol>
+<symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+<symbol id="icon-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+<symbol id="icon-hash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></symbol>
+<symbol id="icon-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
+<symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+<symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+<symbol id="icon-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+<symbol id="icon-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+<symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+<symbol id="icon-smile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></symbol>
+<symbol id="icon-rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 1 2.13-9.36L1 10"/></symbol>
+<symbol id="icon-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+<symbol id="icon-x-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></symbol>
+<symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+</defs>
+</svg>
+
+<script>
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+</script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+<!-- Toast Container -->
+<div id="toastContainer" class="fixed top-4 right-4 z-[100] space-y-3"></div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-white/90 backdrop-blur-sm z-[90] hidden items-center justify-center">
+    <div class="flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p class="text-gray-600 font-medium">Loading...</p>
+    </div>
+</div>
+
+<!-- AUTH PAGE -->
+<div id="authPage" class="min-h-screen flex items-center justify-center p-4 grid-pattern">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8 slide-in">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/30 mb-4">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <h1 class="font-display text-3xl font-bold text-gray-900">NovaESP</h1>
+            <p class="text-gray-500 mt-1">Premium Reseller Panel</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden scale-in">
+            <div class="flex border-b border-gray-100">
+                <button id="loginTab" onclick="switchAuthTab('login')" class="flex-1 py-4 text-sm font-semibold text-primary border-b-2 border-primary transition-all">Sign In</button>
+                <button id="registerTab" onclick="switchAuthTab('register')" class="flex-1 py-4 text-sm font-semibold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-all">Sign Up</button>
+            </div>
+            <div class="p-8">
+                <form id="loginForm" class="space-y-5" onsubmit="handleLogin(event)">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-mail"/></svg>
+                            <input type="email" id="loginEmail" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="you@example.com">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-lock"/></svg>
+                            <input type="password" id="loginPassword" required class="w-full pl-11 pr-11 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Enter your password">
+                            <button type="button" onclick="togglePassword('loginPassword', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg class="w-5 h-5"><use href="#icon-eye"/></svg></button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"><span class="text-gray-600">Remember me</span></label>
+                        <button type="button" onclick="showForgotPassword()" class="text-primary hover:text-primary-dark font-medium">Forgot password?</button>
+                    </div>
+                    <button type="submit" id="loginBtn" class="w-full btn-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5"><use href="#icon-arrow-right"/></svg><span>Sign In</span>
+                    </button>
+                </form>
+                <form id="registerForm" class="space-y-5 hidden" onsubmit="handleRegister(event)">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-user"/></svg>
+                            <input type="text" id="regName" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="John Doe">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-mail"/></svg>
+                            <input type="email" id="regEmail" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="you@example.com">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-lock"/></svg>
+                            <input type="password" id="regPassword" required minlength="6" class="w-full pl-11 pr-11 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Min 6 characters">
+                            <button type="button" onclick="togglePassword('regPassword', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg class="w-5 h-5"><use href="#icon-eye"/></svg></button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Account Type</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="accountType" value="reseller" checked class="peer sr-only">
+                                <div class="p-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
+                                    <svg class="w-6 h-6 mx-auto mb-1 text-gray-400 peer-checked:text-primary"><use href="#icon-users"/></svg>
+                                    <span class="text-sm font-medium text-gray-600 peer-checked:text-primary">Reseller</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="accountType" value="customer" class="peer sr-only">
+                                <div class="p-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
+                                    <svg class="w-6 h-6 mx-auto mb-1 text-gray-400 peer-checked:text-primary"><use href="#icon-user"/></svg>
+                                    <span class="text-sm font-medium text-gray-600 peer-checked:text-primary">Customer</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" id="registerBtn" class="w-full btn-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5"><use href="#icon-check"/></svg><span>Create Account</span>
+                    </button>
+                </form>
+                <div class="mt-6 text-center"><p class="text-xs text-gray-400">By signing in, you agree to our Terms of Service</p></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="forgotModal" class="fixed inset-0 z-[80] hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm modal-overlay" onclick="closeForgotModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm modal-content p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="font-display text-xl font-bold text-gray-900">Reset Password</h3>
+                <button onclick="closeForgotModal()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-500"><use href="#icon-close"/></svg></button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Enter your email and we'll send you a reset link.</p>
+            <form onsubmit="handleForgotPassword(event)" class="space-y-4">
+                <div class="relative">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-mail"/></svg>
+                    <input type="email" id="forgotEmail" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="you@example.com">
+                </div>
+                <button type="submit" id="forgotBtn" class="w-full btn-primary text-white font-semibold py-3 rounded-xl">Send Reset Link</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div id="dashboard" class="hidden min-h-screen flex">
+    <div id="mobileOverlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-lg shadow-primary/20">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </div>
+                <div>
+                    <h1 class="font-display text-xl font-bold text-gray-900">NovaESP</h1>
+                    <p class="text-xs text-gray-400">Admin Panel</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 space-y-1" id="sidebarNav">
+            <!-- Owner Menu -->
+            <div id="ownerMenu" class="space-y-1">
+                <p class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Main</p>
+                <button onclick="navigateTo('dashboard')" class="sidebar-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="dashboard">
+                    <svg class="w-5 h-5 text-primary"><use href="#icon-dashboard"/></svg>Dashboard
+                </button>
+                <button onclick="navigateTo('stock')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="stock">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-stock"/></svg>Stock Management
+                </button>
+                <button onclick="navigateTo('resellers')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="resellers">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-users"/></svg>Resellers
+                </button>
+                <button onclick="navigateTo('prices')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="prices">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-tag"/></svg>Set Prices
+                </button>
+                <p class="px-4 py-2 mt-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Operations</p>
+                <button onclick="navigateTo('balance')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="balance">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-wallet"/></svg>Balance Control
+                </button>
+                <button onclick="navigateTo('broadcast')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="broadcast">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-broadcast"/></svg>Broadcast
+                </button>
+                <button onclick="navigateTo('logs')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="logs">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-log"/></svg>View Logs
+                </button>
+                <button onclick="navigateTo('resetRequests')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="resetRequests">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-rotate-ccw"/></svg>Reset Requests
+                    <span id="resetBadge" class="ml-auto hidden bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                </button>
+            </div>
+
+            <!-- Reseller Menu -->
+            <div id="resellerMenu" class="space-y-1 hidden">
+                <p class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Generate Keys</p>
+                <button onclick="generateKey('5H')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 5H<span class="ml-auto text-xs text-gray-400">₹5</span>
+                </button>
+                <button onclick="generateKey('1D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 1D<span class="ml-auto text-xs text-gray-400">₹10</span>
+                </button>
+                <button onclick="generateKey('3D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 3D<span class="ml-auto text-xs text-gray-400">₹30</span>
+                </button>
+                <button onclick="generateKey('7D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 7D<span class="ml-auto text-xs text-gray-400">₹50</span>
+                </button>
+                <button onclick="generateKey('15D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 15D<span class="ml-auto text-xs text-gray-400">₹90</span>
+                </button>
+                <button onclick="generateKey('30D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 30D<span class="ml-auto text-xs text-gray-400">₹120</span>
+                </button>
+                <button onclick="generateKey('60D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 60D<span class="ml-auto text-xs text-gray-400">₹200</span>
+                </button>
+                <p class="px-4 py-2 mt-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Account</p>
+                <button onclick="navigateTo('resellerDashboard')" class="sidebar-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="resellerDashboard">
+                    <svg class="w-5 h-5 text-primary"><use href="#icon-dashboard"/></svg>My Dashboard
+                </button>
+                <button onclick="navigateTo('myBalance')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="myBalance">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-wallet"/></svg>My Balance
+                </button>
+                <button onclick="navigateTo('stockLeft')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="stockLeft">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-stock"/></svg>Stock Left
+                </button>
+                <button onclick="navigateTo('resetKey')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="resetKey">
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-rotate-ccw"/></svg>Reset Key
+                </button>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-gray-100">
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-bold text-sm" id="userAvatar">N</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 truncate" id="userName">User</p>
+                    <p class="text-xs text-gray-400 truncate" id="userRole">Loading...</p>
+                </div>
+                <button onclick="logout()" class="p-2 hover:bg-white rounded-lg transition-colors text-gray-400 hover:text-red-500">
+                    <svg class="w-5 h-5"><use href="#icon-logout"/></svg>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col min-w-0">
+        <header class="sticky top-0 z-30 glass border-b border-gray-100">
+            <div class="flex items-center justify-between px-4 lg:px-8 py-4">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="lg:hidden p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                        <svg class="w-6 h-6 text-gray-600"><use href="#icon-menu"/></svg>
+                    </button>
+                    <div>
+                        <h2 class="font-display text-xl font-bold text-gray-900" id="pageTitle">Dashboard</h2>
+                        <p class="text-xs text-gray-400" id="pageSubtitle">Welcome back</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="refreshData()" class="p-2.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-500" title="Refresh">
+                        <svg class="w-5 h-5"><use href="#icon-refresh"/></svg>
+                    </button>
+                    <div class="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary-50 rounded-xl border border-primary/10">
+                        <svg class="w-4 h-4 text-primary"><use href="#icon-shield"/></svg>
+                        <span class="text-sm font-semibold text-primary" id="headerBalance">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <main class="flex-1 p-4 lg:p-8 overflow-y-auto" id="mainContent"></main>
+    </div>
+</div>
+
+<!-- PAGE TEMPLATES -->
+<template id="page-dashboard">
+<div class="space-y-6 slide-in">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-6 h-6 text-primary"><use href="#icon-users"/></svg></div>
+                <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full flex items-center gap-1"><svg class="w-3 h-3"><use href="#icon-trending-up"/></svg>Active</span>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 number-animate" id="statResellers">0</h3>
+            <p class="text-sm text-gray-500 mt-1">Total Resellers</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center"><svg class="w-6 h-6 text-blue-500"><use href="#icon-key"/></svg></div>
+                <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Generated</span>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 number-animate" id="statKeys">0</h3>
+            <p class="text-sm text-gray-500 mt-1">Keys Generated</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center"><svg class="w-6 h-6 text-amber-500"><use href="#icon-dollar"/></svg></div>
+                <span class="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">Revenue</span>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 number-animate" id="statRevenue">₹0</h3>
+            <p class="text-sm text-gray-500 mt-1">Total Revenue</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center"><svg class="w-6 h-6 text-purple-500"><use href="#icon-package"/></svg></div>
+                <span class="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-full">Inventory</span>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 number-animate" id="statStock">0</h3>
+            <p class="text-sm text-gray-500 mt-1">Total Stock Left</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-5 h-5 text-primary"><use href="#icon-stock"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Stock Overview</h3><p class="text-sm text-gray-400">Available keys by plan</p></div>
+            </div>
+            <button onclick="navigateTo('stock')" class="text-sm font-medium text-primary hover:text-primary-dark flex items-center gap-1">Manage<svg class="w-4 h-4"><use href="#icon-arrow-right"/></svg></button>
+        </div>
+        <div class="p-6"><div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4" id="stockGrid"></div></div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><svg class="w-5 h-5 text-blue-500"><use href="#icon-activity"/></svg></div>
+                    <div><h3 class="font-display text-lg font-bold text-gray-900">Recent Activity</h3><p class="text-sm text-gray-400">Last 10 key generations</p></div>
+                </div>
+                <button onclick="navigateTo('logs')" class="text-sm font-medium text-primary hover:text-primary-dark">View All</button>
+            </div>
+            <div class="divide-y divide-gray-50" id="recentLogsList"></div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center"><svg class="w-5 h-5 text-amber-500"><use href="#icon-zap"/></svg></div>
+                    <div><h3 class="font-display text-lg font-bold text-gray-900">Quick Actions</h3><p class="text-sm text-gray-400">Frequently used</p></div>
+                </div>
+            </div>
+            <div class="p-4 space-y-2">
+                <button onclick="navigateTo('stock')" class="w-full flex items-center gap-3 p-4 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
+                    <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all text-primary"><svg class="w-5 h-5"><use href="#icon-upload"/></svg></div>
+                    <div class="text-left flex-1"><p class="text-sm font-semibold text-gray-900">Upload Stock</p><p class="text-xs text-gray-400">Add new keys</p></div>
+                    <svg class="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors"><use href="#icon-arrow-right"/></svg>
+                </button>
+                <button onclick="navigateTo('resellers')" class="w-full flex items-center gap-3 p-4 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
+                    <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all text-blue-500"><svg class="w-5 h-5"><use href="#icon-plus"/></svg></div>
+                    <div class="text-left flex-1"><p class="text-sm font-semibold text-gray-900">Add Reseller</p><p class="text-xs text-gray-400">Register new user</p></div>
+                    <svg class="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors"><use href="#icon-arrow-right"/></svg>
+                </button>
+                <button onclick="navigateTo('balance')" class="w-full flex items-center gap-3 p-4 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
+                    <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-all text-green-500"><svg class="w-5 h-5"><use href="#icon-wallet"/></svg></div>
+                    <div class="text-left flex-1"><p class="text-sm font-semibold text-gray-900">Add Balance</p><p class="text-xs text-gray-400">Credit reseller</p></div>
+                    <svg class="w-5 h-5 text-gray-300 group-hover:text-green-500 transition-colors"><use href="#icon-arrow-right"/></svg>
+                </button>
+                <button onclick="navigateTo('broadcast')" class="w-full flex items-center gap-3 p-4 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
+                    <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition-all text-purple-500"><svg class="w-5 h-5"><use href="#icon-send"/></svg></div>
+                    <div class="text-left flex-1"><p class="text-sm font-semibold text-gray-900">Broadcast</p><p class="text-xs text-gray-400">Message all resellers</p></div>
+                    <svg class="w-5 h-5 text-gray-300 group-hover:text-purple-500 transition-colors"><use href="#icon-arrow-right"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="page-stock">
+<div class="space-y-6 slide-in">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-5 h-5 text-primary"><use href="#icon-upload"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Upload Stock</h3><p class="text-sm text-gray-400">Add keys to inventory</p></div>
+            </div>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                <button onclick="selectPlan('5H')" class="plan-btn p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary-50 transition-all text-center" data-plan="5H"><p class="font-display font-bold text-gray-900">5H</p><p class="text-xs text-gray-400 mt-1">5 Hours</p></button>
+                <button onclick="selectPlan('1D')" class="plan-btn p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary-50 transition-all text-center" data-plan="1D"><p class="font-display font-bold text-gray-900">1D</p><p class="text-xs text-gray-400 mt-1">1 Day</p></button>
+                <button onclick="selectPlan('3D')" class="plan-btn p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary-50 transition-all text-center" data-plan="3D"><p class="font-display font-bold text-gray-900">3D</p><p class="text-xs text-gray-400 mt-1">3 Days</p></button>
+                <button onclick="selectPlan('7D')" class="plan-btn p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary-50 transition-all text-center" data-plan="7D"><p class="font-display font-bold text-gray-900">7D</p><p class="text-xs text-gray-400 mt-1">7 Days</p></button>
+                <button onclick="selectPlan('15D')" class="plan-btn p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary-50 transition-all text-center" data-plan="15D"><p class="font-display font-bold text-gray-900">15D</p><p class="text-xs text-gray-400 mt-1">15 Days</p></button>
+                <button onclick="selectPlan('30D')" class="plan-btn p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary-50 transition-all text-center" data-plan="30D"><p class="font-display font-bold text-gray-900">30D</p><p class="text-xs text-gray-400 mt-1">30 Days</p></button>
+                <button onclick="selectPlan('60D')" class="plan-btn p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary-50 transition-all text-center" data-plan="60D"><p class="font-display font-bold text-gray-900">60D</p><p class="text-xs text-gray-400 mt-1">60 Days</p></button>
+            </div>
+            <div id="uploadArea" class="hidden">
+                <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-primary hover:bg-primary-50/30 transition-all">
+                    <svg class="w-10 h-10 text-gray-300 mx-auto mb-3"><use href="#icon-upload"/></svg>
+                    <textarea id="stockKeysInput" rows="6" class="w-full bg-transparent text-sm font-mono focus:outline-none resize-none" placeholder="Paste keys here, one per line..."></textarea>
+                </div>
+                <div class="flex items-center justify-between mt-4">
+                    <p class="text-xs text-gray-400">Selected: <span id="selectedPlanLabel" class="font-semibold text-primary">None</span></p>
+                    <button onclick="uploadStock()" class="btn-primary text-white font-semibold px-6 py-2.5 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Upload Keys</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><svg class="w-5 h-5 text-blue-500"><use href="#icon-stock"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Current Stock</h3><p class="text-sm text-gray-400">Available keys in inventory</p></div>
+            </div>
+            <button onclick="refreshData()" class="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"><svg class="w-5 h-5"><use href="#icon-refresh"/></svg></button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50"><tr><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Plan</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Available</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Price</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Status</th><th class="text-right text-xs font-semibold text-gray-500 uppercase px-6 py-4">Action</th></tr></thead>
+                <tbody class="divide-y divide-gray-50" id="stockTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="page-resellers">
+<div class="space-y-6 slide-in">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center"><svg class="w-5 h-5 text-green-500"><use href="#icon-plus"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Add New Reseller</h3><p class="text-sm text-gray-400">Register a new reseller account</p></div>
+            </div>
+        </div>
+        <div class="p-6">
+            <form onsubmit="addReseller(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">User ID / Email</label><input type="text" id="resellerId" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Telegram ID or Email"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label><input type="text" id="resellerUsername" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="@username"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label><input type="text" id="resellerName" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Full name"></div>
+                <div class="md:col-span-3"><button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Add Reseller</button></div>
+            </form>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-5 h-5 text-primary"><use href="#icon-users"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">All Resellers</h3><p class="text-sm text-gray-400">Manage existing resellers</p></div>
+            </div>
+            <div class="relative">
+                <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"><use href="#icon-search"/></svg>
+                <input type="text" id="resellerSearch" oninput="filterResellers()" class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus w-64" placeholder="Search resellers...">
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50"><tr><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Reseller</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">ID</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Balance</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Joined</th><th class="text-right text-xs font-semibold text-gray-500 uppercase px-6 py-4">Actions</th></tr></thead>
+                <tbody class="divide-y divide-gray-50" id="resellersTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="page-prices">
+<div class="space-y-6 slide-in">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center"><svg class="w-5 h-5 text-amber-500"><use href="#icon-tag"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Set Prices</h3><p class="text-sm text-gray-400">Configure pricing for each plan</p></div>
+            </div>
+        </div>
+        <div class="p-6"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="pricesGrid"></div></div>
+    </div>
+</div>
+</template>
+
+<template id="page-balance">
+<div class="space-y-6 slide-in">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center"><svg class="w-5 h-5 text-green-500"><use href="#icon-plus"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Add Balance</h3><p class="text-sm text-gray-400">Credit reseller account</p></div>
+            </div>
+        </div>
+        <div class="p-6">
+            <form onsubmit="addBalance(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Reseller</label><select id="addBalanceReseller" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus"><option value="">Select reseller...</option></select></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (₹)</label><input type="number" id="addBalanceAmount" required min="1" step="0.01" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="0.00"></div>
+                <div class="md:col-span-3"><button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Add Balance</button></div>
+            </form>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><svg class="w-5 h-5 text-red-500"><use href="#icon-minus"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Remove Balance</h3><p class="text-sm text-gray-400">Deduct from reseller account</p></div>
+            </div>
+        </div>
+        <div class="p-6">
+            <form onsubmit="removeBalance(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Reseller</label><select id="removeBalanceReseller" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus"><option value="">Select reseller...</option></select></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (₹)</label><input type="number" id="removeBalanceAmount" required min="1" step="0.01" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="0.00"></div>
+                <div class="md:col-span-3"><button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors"><svg class="w-4 h-4"><use href="#icon-minus"/></svg>Remove Balance</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="page-broadcast">
+<div class="space-y-6 slide-in max-w-3xl">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center"><svg class="w-5 h-5 text-purple-500"><use href="#icon-broadcast"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Broadcast Message</h3><p class="text-sm text-gray-400">Send message to all resellers</p></div>
+            </div>
+        </div>
+        <div class="p-6 space-y-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Message</label><textarea id="broadcastMessage" rows="6" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus resize-none" placeholder="Type your message here..."></textarea></div>
+            <div class="flex items-center justify-between">
+                <p class="text-xs text-gray-400">This will be sent to <span id="broadcastCount" class="font-semibold text-primary">0</span> resellers</p>
+                <button onclick="sendBroadcast()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-send"/></svg>Send Broadcast</button>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="page-logs">
+<div class="space-y-6 slide-in">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><svg class="w-5 h-5 text-blue-500"><use href="#icon-log"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Activity Logs</h3><p class="text-sm text-gray-400">Key generation history</p></div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="relative">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"><use href="#icon-search"/></svg>
+                    <input type="text" id="logSearch" oninput="filterLogs()" class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus w-48" placeholder="Search logs...">
+                </div>
+                <button onclick="refreshData()" class="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"><svg class="w-5 h-5"><use href="#icon-refresh"/></svg></button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50"><tr><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Key</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Reseller</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Plan</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Price</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Balance Left</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Time</th></tr></thead>
+                <tbody class="divide-y divide-gray-50" id="logsTableBody"></tbody>
+            </table>
+        </div>
+        <div class="p-4 border-t border-gray-50 text-center"><button onclick="loadMoreLogs()" class="text-sm font-medium text-primary hover:text-primary-dark">Load More</button></div>
+    </div>
+</div>
+</template>
+
+<template id="page-resetRequests">
+<div class="space-y-6 slide-in">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><svg class="w-5 h-5 text-orange-500"><use href="#icon-rotate-ccw"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Reset Key Requests</h3><p class="text-sm text-gray-400">Pending approvals</p></div>
+            </div>
+            <span id="pendingCount" class="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">0 Pending</span>
+        </div>
+        <div class="divide-y divide-gray-50" id="resetRequestsList"></div>
+    </div>
+</div>
+</template>
+
+<template id="page-help">
+<div class="space-y-6 slide-in max-w-4xl">
+    <div class="bg-gradient-to-br from-primary to-primary-dark rounded-2xl p-8 text-white">
+        <div class="flex items-center gap-4 mb-4">
+            <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center"><svg class="w-7 h-7 text-white"><use href="#icon-help"/></svg></div>
+            <div><h2 class="font-display text-2xl font-bold">Help Center</h2><p class="text-white/80">Everything you need to know</p></div>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 card-hover">
+            <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-primary"><use href="#icon-upload"/></svg></div>
+            <h3 class="font-display text-lg font-bold text-gray-900 mb-2">Upload Stock</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Navigate to Stock Management, select a plan type, and paste keys one per line. Duplicates are automatically skipped.</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 card-hover">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-blue-500"><use href="#icon-users"/></svg></div>
+            <h3 class="font-display text-lg font-bold text-gray-900 mb-2">Add Reseller</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Go to Resellers page, enter the user's ID, username, and name. They will receive access immediately.</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 card-hover">
+            <div class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-green-500"><use href="#icon-wallet"/></svg></div>
+            <h3 class="font-display text-lg font-bold text-gray-900 mb-2">Manage Balance</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Use the Balance Control page to add or remove balance from any reseller account instantly.</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 card-hover">
+            <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-purple-500"><use href="#icon-tag"/></svg></div>
+            <h3 class="font-display text-lg font-bold text-gray-900 mb-2">Set Prices</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Update pricing for each plan anytime. Changes apply immediately to all resellers.</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 card-hover">
+            <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-amber-500"><use href="#icon-broadcast"/></svg></div>
+            <h3 class="font-display text-lg font-bold text-gray-900 mb-2">Broadcast</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Send announcements to all resellers at once. Useful for stock updates or promotions.</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 card-hover">
+            <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-red-500"><use href="#icon-rotate-ccw"/></svg></div>
+            <h3 class="font-display text-lg font-bold text-gray-900 mb-2">Reset Keys</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Resellers can request key resets. Approve them from the Reset Requests page.</p>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="page-resellerDashboard">
+<div class="space-y-6 slide-in">
+    <div class="bg-gradient-to-br from-primary to-primary-dark rounded-2xl p-8 text-white relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+        <div class="relative">
+            <div class="flex items-center gap-3 mb-2"><svg class="w-5 h-5 text-white/80"><use href="#icon-wallet"/></svg><span class="text-white/80 font-medium">Your Balance</span></div>
+            <h2 class="font-display text-4xl font-bold" id="resellerBalanceDisplay">₹0.00</h2>
+            <p class="text-white/60 text-sm mt-2">Available for key generation</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-5 h-5 text-primary"><use href="#icon-zap"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Quick Generate</h3><p class="text-sm text-gray-400">Generate keys instantly</p></div>
+            </div>
+        </div>
+        <div class="p-6"><div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3" id="quickGenerateGrid"></div></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><svg class="w-5 h-5 text-blue-500"><use href="#icon-key"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Your Recent Keys</h3><p class="text-sm text-gray-400">Last generated keys</p></div>
+            </div>
+        </div>
+        <div class="divide-y divide-gray-50" id="recentKeysList"></div>
+    </div>
+</div>
+</template>
+
+<template id="page-myBalance">
+<div class="space-y-6 slide-in max-w-2xl mx-auto">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-8 text-center">
+            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/30">
+                <svg class="w-10 h-10 text-white"><use href="#icon-wallet"/></svg>
+            </div>
+            <h3 class="font-display text-lg font-bold text-gray-900">Current Balance</h3>
+            <p class="font-display text-5xl font-bold text-primary mt-2" id="myBalanceAmount">₹0.00</p>
+            <p class="text-sm text-gray-400 mt-2">Contact admin to add more balance</p>
+        </div>
+        <div class="p-6 border-t border-gray-50 bg-gray-50/50">
+            <div class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100">
+                <svg class="w-5 h-5 text-primary"><use href="#icon-info"/></svg>
+                <p class="text-sm text-gray-600">Balance is deducted automatically when you generate keys.</p>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="page-stockLeft">
+<div class="space-y-6 slide-in">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-5 h-5 text-primary"><use href="#icon-stock"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Stock Availability</h3><p class="text-sm text-gray-400">Available keys and pricing</p></div>
+            </div>
+        </div>
+        <div class="p-6"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="stockLeftGrid"></div></div>
+    </div>
+</div>
+</template>
+
+<template id="page-resetKey">
+<div class="space-y-6 slide-in max-w-2xl mx-auto">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><svg class="w-5 h-5 text-orange-500"><use href="#icon-rotate-ccw"/></svg></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Reset Key Request</h3><p class="text-sm text-gray-400">Request admin to reset a key</p></div>
+            </div>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Key to Reset</label>
+                <div class="relative">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-key"/></svg>
+                    <input type="text" id="resetKeyInput" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus font-mono" placeholder="Enter key here...">
+                </div>
+            </div>
+            <button onclick="submitResetRequest()" class="w-full btn-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                <svg class="w-5 h-5"><use href="#icon-send"/></svg>Submit Request
+            </button>
+            <div class="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <svg class="w-5 h-5 text-amber-500 flex-shrink-0"><use href="#icon-alert"/></svg>
+                <p class="text-sm text-amber-700">Your request will be sent to the admin for approval. You will be notified once approved.</p>
+            </div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50"><h3 class="font-display text-lg font-bold text-gray-900">My Requests</h3></div>
+        <div class="divide-y divide-gray-50" id="myResetRequests"></div>
+    </div>
+</div>
+</template>
+
+<!-- Key Generated Modal -->
+<div id="keyModal" class="fixed inset-0 z-[80] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm modal-overlay" onclick="closeKeyModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md modal-content overflow-hidden">
+            <div class="bg-gradient-to-br from-primary to-primary-dark p-6 text-white text-center">
+                <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3"><svg class="w-8 h-8 text-white"><use href="#icon-check-circle"/></svg></div>
+                <h3 class="font-display text-xl font-bold">Key Generated!</h3>
+                <p class="text-white/80 text-sm mt-1">Save this key, it won't be shown again</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="key-card rounded-xl p-4 text-center">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Your Key</p>
+                    <p class="font-mono text-lg font-bold text-primary break-all" id="generatedKey">---</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gray-50 rounded-xl p-3 text-center"><p class="text-xs text-gray-400">Plan</p><p class="font-semibold text-gray-900" id="generatedPlan">---</p></div>
+                    <div class="bg-gray-50 rounded-xl p-3 text-center"><p class="text-xs text-gray-400">Price</p><p class="font-semibold text-gray-900" id="generatedPrice">---</p></div>
+                </div>
+                <div class="bg-primary-50 rounded-xl p-3 flex items-center justify-between"><span class="text-sm text-gray-600">Balance Left</span><span class="font-semibold text-primary" id="generatedBalance">---</span></div>
+                <button onclick="copyGeneratedKey()" class="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"><svg class="w-5 h-5"><use href="#icon-copy"/></svg>Copy Key</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="fixed inset-0 z-[80] hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm modal-overlay" onclick="closeConfirmModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm modal-content p-6">
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3"><svg class="w-7 h-7 text-red-500"><use href="#icon-alert"/></svg></div>
+                <h3 class="font-display text-lg font-bold text-gray-900" id="confirmTitle">Confirm</h3>
+                <p class="text-sm text-gray-500 mt-1" id="confirmMessage">Are you sure?</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+                <button id="confirmAction" class="flex-1 py-3 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== STATE =====
+let currentUser = null;
+let userData = null;
+let currentPage = 'dashboard';
+let stockData = {};
+let pricesData = {};
+let resellersData = [];
+let logsData = [];
+let resetRequestsData = [];
+let selectedPlan = null;
+let confirmCallback = null;
+let logLimit = 20;
+
+const defaultPrices = {'5H':5,'1D':10,'3D':30,'7D':50,'15D':90,'30D':120,'60D':200};
+const planLabels = {'5H':'5 Hours','1D':'1 Day','3D':'3 Days','7D':'7 Days','15D':'15 Days','30D':'30 Days','60D':'60 Days'};
+const OWNER_EMAIL = 'owner@novaesp.com';
+
+// ===== AUTH =====
+function switchAuthTab(tab) {
+    const loginTab = document.getElementById('loginTab');
+    const registerTab = document.getElementById('registerTab');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    if (tab === 'login') {
+        loginTab.classList.add('text-primary','border-primary'); loginTab.classList.remove('text-gray-400','border-transparent');
+        registerTab.classList.remove('text-primary','border-primary'); registerTab.classList.add('text-gray-400','border-transparent');
+        loginForm.classList.remove('hidden'); registerForm.classList.add('hidden');
+    } else {
+        registerTab.classList.add('text-primary','border-primary'); registerTab.classList.remove('text-gray-400','border-transparent');
+        loginTab.classList.remove('text-primary','border-primary'); loginTab.classList.add('text-gray-400','border-transparent');
+        registerForm.classList.remove('hidden'); loginForm.classList.add('hidden');
+    }
+}
+function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+function showForgotPassword() { document.getElementById('forgotModal').classList.remove('hidden'); }
+function closeForgotModal() { document.getElementById('forgotModal').classList.add('hidden'); }
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
+    try {
+        await auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
+        showToast('Welcome back!','success');
+    } catch(err) {
+        showToast(err.message,'error');
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-5 h-5"><use href="#icon-arrow-right"/></svg><span>Sign In</span>';
+    }
+}
+async function handleRegister(e) {
+    e.preventDefault();
+    const btn = document.getElementById('registerBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
+    try {
+        const name = document.getElementById('regName').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const role = document.querySelector('input[name="accountType"]:checked').value;
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('users').doc(cred.user.uid).set({name, email, role, balance:0, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+        showToast('Account created!','success');
+    } catch(err) {
+        showToast(err.message,'error');
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-5 h-5"><use href="#icon-check"/></svg><span>Create Account</span>';
+    }
+}
+async function handleForgotPassword(e) {
+    e.preventDefault();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true;
+    try {
+        await auth.sendPasswordResetEmail(document.getElementById('forgotEmail').value);
+        showToast('Reset link sent!','success'); closeForgotModal();
+    } catch(err) { showToast(err.message,'error'); }
+    btn.disabled = false;
+}
+function logout() { auth.signOut(); showToast('Logged out','info'); }
+
+// ===== AUTH STATE =====
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        currentUser = user;
+        const doc = await db.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+            userData = doc.data(); userData.uid = user.uid;
+            if (user.email === OWNER_EMAIL) { userData.role = 'owner'; await db.collection('users').doc(user.uid).update({role:'owner'}); }
+            showDashboard(); await loadAllData();
+        } else {
+            userData = {name: user.displayName||'User', email: user.email, role: 'customer', balance: 0, uid: user.uid};
+            await db.collection('users').doc(user.uid).set(userData);
+            showDashboard();
+        }
+    } else { currentUser = null; userData = null; showAuth(); }
+});
+
+function showAuth() { document.getElementById('authPage').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
+function showDashboard() {
+    document.getElementById('authPage').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('userName').textContent = userData.name || 'User';
+    document.getElementById('userRole').textContent = userData.role === 'owner' ? 'Owner' : 'Reseller';
+    document.getElementById('userAvatar').textContent = (userData.name || 'U').charAt(0).toUpperCase();
+    document.getElementById('headerBalance').textContent = '₹' + (userData.balance || 0).toFixed(2);
+    if (userData.role === 'owner') {
+        document.getElementById('ownerMenu').classList.remove('hidden');
+        document.getElementById('resellerMenu').classList.add('hidden');
+        navigateTo('dashboard');
+    } else {
+        document.getElementById('ownerMenu').classList.add('hidden');
+        document.getElementById('resellerMenu').classList.remove('hidden');
+        navigateTo('resellerDashboard');
+    }
+}
+
+// ===== NAVIGATION =====
+function navigateTo(page) {
+    currentPage = page;
+    const mainContent = document.getElementById('mainContent');
+    const template = document.getElementById('page-' + page);
+    if (template) { mainContent.innerHTML = ''; mainContent.appendChild(template.content.cloneNode(true)); }
+    document.querySelectorAll('.sidebar-item').forEach(el => { el.classList.remove('active'); if (el.dataset.page === page) el.classList.add('active'); });
+    const titles = {
+        'dashboard': ['Dashboard','Overview of your panel'],'stock': ['Stock Management','Upload and manage keys'],'resellers': ['Resellers','Manage reseller accounts'],
+        'prices': ['Set Prices','Configure plan pricing'],'balance': ['Balance Control','Add or remove balance'],'broadcast': ['Broadcast','Message all resellers'],
+        'logs': ['Activity Logs','Key generation history'],'resetRequests': ['Reset Requests','Pending key resets'],'help': ['Help Center','Documentation and guides'],
+        'resellerDashboard': ['My Dashboard','Generate keys quickly'],'myBalance': ['My Balance','Account balance details'],'stockLeft': ['Stock Left','Available keys and prices'],'resetKey': ['Reset Key','Request key reset']
+    };
+    const [title, subtitle] = titles[page] || ['Panel',''];
+    document.getElementById('pageTitle').textContent = title;
+    document.getElementById('pageSubtitle').textContent = subtitle;
+    document.getElementById('sidebar').classList.add('-translate-x-full');
+    document.getElementById('mobileOverlay').classList.add('hidden');
+    setTimeout(() => initPage(page), 50);
+}
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobileOverlay');
+    if (sidebar.classList.contains('-translate-x-full')) { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); }
+    else { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+}
+
+// ===== DATA LOADING =====
+async function loadAllData() {
+    showLoading(true);
+    try { await Promise.all([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]); }
+    catch(e) { console.error(e); }
+    showLoading(false);
+}
+async function loadStock() {
+    const snapshot = await db.collection('stock').get();
+    stockData = {}; snapshot.forEach(doc => { stockData[doc.id] = doc.data(); });
+}
+async function loadPrices() {
+    const snapshot = await db.collection('prices').get();
+    pricesData = {}; snapshot.forEach(doc => { pricesData[doc.id] = doc.data().price; });
+    for (const [plan, price] of Object.entries(defaultPrices)) {
+        if (!pricesData[plan]) { pricesData[plan] = price; db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()}); }
+    }
+}
+async function loadResellers() {
+    const snapshot = await db.collection('users').where('role','==','reseller').get();
+    resellersData = []; snapshot.forEach(doc => { resellersData.push({id: doc.id, ...doc.data()}); });
+}
+async function loadLogs() {
+    const snapshot = await db.collection('logs').orderBy('createdAt','desc').limit(logLimit).get();
+    logsData = []; snapshot.forEach(doc => { logsData.push({id: doc.id, ...doc.data()}); });
+}
+async function loadResetRequests() {
+    const snapshot = await db.collection('resetRequests').where('status','==','pending').get();
+    resetRequestsData = []; snapshot.forEach(doc => { resetRequestsData.push({id: doc.id, ...doc.data()}); });
+    updateResetBadge();
+}
+function updateResetBadge() {
+    const badge = document.getElementById('resetBadge');
+    if (resetRequestsData.length > 0) { badge.textContent = resetRequestsData.length; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+}
+function refreshData() { loadAllData().then(() => { initPage(currentPage); showToast('Data refreshed','success'); }); }
+
+// ===== PAGE INITIALIZERS =====
+function initPage(page) {
+    switch(page) {
+        case 'dashboard': initDashboard(); break;
+        case 'stock': initStockPage(); break;
+        case 'resellers': initResellersPage(); break;
+        case 'prices': initPricesPage(); break;
+        case 'balance': initBalancePage(); break;
+        case 'broadcast': initBroadcastPage(); break;
+        case 'logs': initLogsPage(); break;
+        case 'resetRequests': initResetRequestsPage(); break;
+        case 'resellerDashboard': initResellerDashboard(); break;
+        case 'myBalance': initMyBalance(); break;
+        case 'stockLeft': initStockLeft(); break;
+        case 'resetKey': initResetKey(); break;
+    }
+}
+
+function initDashboard() {
+    document.getElementById('statResellers').textContent = resellersData.length;
+    document.getElementById('statKeys').textContent = logsData.length;
+    const revenue = logsData.reduce((sum, log) => sum + (log.price || 0), 0);
+    document.getElementById('statRevenue').textContent = '₹' + revenue.toLocaleString();
+    const totalStock = Object.values(stockData).reduce((sum, s) => sum + (s.keys?.filter(k => !k.used)?.length || 0), 0);
+    document.getElementById('statStock').textContent = totalStock;
+    const stockGrid = document.getElementById('stockGrid');
+    if (stockGrid) {
+        stockGrid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
+            const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+            const lowClass = count < 5 ? 'text-red-500' : 'text-gray-900';
+            const lowBadge = count < 5 ? '<span class="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">LOW</span>' : '';
+            return `<div class="bg-gray-50 rounded-xl p-4 text-center border border-gray-100"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-2xl font-bold ${lowClass} mt-1">${count}</p><p class="text-xs text-gray-400">${label}</p>${lowBadge}</div>`;
+        }).join('');
+    }
+    const logsList = document.getElementById('recentLogsList');
+    if (logsList) {
+        if (logsData.length === 0) logsList.innerHTML = '<div class="p-8 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-200"><use href="#icon-activity"/></svg><p>No activity yet</p></div>';
+        else logsList.innerHTML = logsData.slice(0,10).map(log => `<div class="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"><div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-primary"><use href="#icon-key"/></svg></div><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-gray-900 truncate">${log.generatedKey || 'Unknown'}</p><p class="text-xs text-gray-400">${log.resellerName || 'Unknown'} • ${log.plan || 'N/A'}</p></div><div class="text-right"><p class="text-sm font-semibold text-primary">₹${(log.price || 0).toFixed(2)}</p><p class="text-xs text-gray-400">${log.createdAt ? new Date(log.createdAt.toDate()).toLocaleDateString() : 'N/A'}</p></div></div>`).join('');
+    }
+}
+
+function initStockPage() {
+    const tbody = document.getElementById('stockTableBody');
+    if (tbody) {
+        tbody.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
+            const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+            const price = pricesData[plan] || defaultPrices[plan];
+            const statusClass = count === 0 ? 'bg-red-50 text-red-600' : count < 5 ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600';
+            const statusText = count === 0 ? 'Out of Stock' : count < 5 ? 'Low Stock' : 'Available';
+            return `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><span class="font-display font-bold text-gray-900">${plan}</span><span class="text-xs text-gray-400 ml-2">${label}</span></td><td class="px-6 py-4 font-semibold ${count < 5 ? 'text-red-500' : 'text-gray-900'}">${count}</td><td class="px-6 py-4 text-gray-600">₹${price}</td><td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${statusText}</span></td><td class="px-6 py-4 text-right"><button onclick="selectPlan('${plan}')" class="text-sm font-medium text-primary hover:text-primary-dark">Upload</button></td></tr>`;
+        }).join('');
+    }
+}
+function selectPlan(plan) {
+    selectedPlan = plan;
+    document.getElementById('uploadArea').classList.remove('hidden');
+    document.getElementById('selectedPlanLabel').textContent = plan + ' (' + planLabels[plan] + ')';
+    document.querySelectorAll('.plan-btn').forEach(btn => {
+        if (btn.dataset.plan === plan) { btn.classList.add('border-primary','bg-primary-50'); btn.classList.remove('border-gray-200'); }
+        else { btn.classList.remove('border-primary','bg-primary-50'); btn.classList.add('border-gray-200'); }
+    });
+}
+async function uploadStock() {
+    if (!selectedPlan) return showToast('Select a plan first','error');
+    const input = document.getElementById('stockKeysInput').value.trim();
+    if (!input) return showToast('Enter keys to upload','error');
+    const keys = input.split('\n').map(k => k.trim()).filter(k => k);
+    const existing = stockData[selectedPlan]?.keys || [];
+    const newKeys = keys.map(key => ({key, used: false, usedBy: null, usedAt: null}));
+    const allKeys = [...existing, ...newKeys];
+    showLoading(true);
+    try {
+        await db.collection('stock').doc(selectedPlan).set({keys: allKeys});
+        showToast(`Uploaded ${newKeys.length} keys for ${selectedPlan}`,'success');
+        document.getElementById('stockKeysInput').value = '';
+        await loadStock(); initStockPage();
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+
+function initResellersPage() { renderResellersTable(resellersData); updateBalanceResellerSelects(); }
+function renderResellersTable(data) {
+    const tbody = document.getElementById('resellersTableBody');
+    if (!tbody) return;
+    if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No resellers found</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.id.substring(0,8)}...</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
+}
+function filterResellers() {
+    const query = document.getElementById('resellerSearch').value.toLowerCase();
+    const filtered = resellersData.filter(r => (r.name || '').toLowerCase().includes(query) || (r.username || '').toLowerCase().includes(query) || (r.email || '').toLowerCase().includes(query));
+    renderResellersTable(filtered);
+}
+async function addReseller(e) {
+    e.preventDefault();
+    const id = document.getElementById('resellerId').value.trim();
+    const username = document.getElementById('resellerUsername').value.trim();
+    const name = document.getElementById('resellerName').value.trim();
+    showLoading(true);
+    try {
+        await db.collection('users').doc(id).set({name, username, email: id.includes('@') ? id : id+'@temp.com', role: 'reseller', balance: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+        showToast('Reseller added successfully','success');
+        document.getElementById('resellerId').value = ''; document.getElementById('resellerUsername').value = ''; document.getElementById('resellerName').value = '';
+        await loadResellers(); initResellersPage();
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+function confirmRemoveReseller(id, name) {
+    confirmCallback = async () => {
+        showLoading(true);
+        try { await db.collection('users').doc(id).delete(); showToast('Reseller removed','success'); await loadResellers(); initResellersPage(); }
+        catch(e) { showToast(e.message,'error'); }
+        showLoading(false);
+    };
+    document.getElementById('confirmTitle').textContent = 'Remove Reseller';
+    document.getElementById('confirmMessage').textContent = `Are you sure you want to remove ${name || 'this reseller'}?`;
+    document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+function initPricesPage() {
+    const grid = document.getElementById('pricesGrid');
+    if (!grid) return;
+    grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
+        const price = pricesData[plan] || defaultPrices[plan];
+        return `<div class="bg-gray-50 rounded-xl p-5 border border-gray-100 card-hover"><div class="flex items-center justify-between mb-3"><span class="font-display font-bold text-gray-900">${plan}</span><span class="text-xs text-gray-400">${label}</span></div><div class="flex items-end gap-2 mb-4"><span class="text-2xl font-bold text-primary">₹${price}</span></div><div class="flex gap-2"><input type="number" id="price-${plan}" value="${price}" min="0" step="0.01" class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none input-focus"><button onclick="updatePrice('${plan}')" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors"><svg class="w-4 h-4"><use href="#icon-check"/></svg></button></div></div>`;
+    }).join('');
+}
+async function updatePrice(plan) {
+    const input = document.getElementById(`price-${plan}`);
+    const price = parseFloat(input.value);
+    if (isNaN(price) || price < 0) return showToast('Invalid price','error');
+    showLoading(true);
+    try {
+        await db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+        pricesData[plan] = price; showToast(`Price updated for ${plan}`,'success');
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+
+function updateBalanceResellerSelects() {
+    const options = resellersData.map(r => `<option value="${r.id}">${r.name} (₹${(r.balance || 0).toFixed(2)})</option>`).join('');
+    const addSelect = document.getElementById('addBalanceReseller');
+    const removeSelect = document.getElementById('removeBalanceReseller');
+    if (addSelect) addSelect.innerHTML = '<option value="">Select reseller...</option>' + options;
+    if (removeSelect) removeSelect.innerHTML = '<option value="">Select reseller...</option>' + options;
+}
+async function addBalance(e) {
+    e.preventDefault();
+    const resellerId = document.getElementById('addBalanceReseller').value;
+    const amount = parseFloat(document.getElementById('addBalanceAmount').value);
+    if (!resellerId || !amount || amount <= 0) return showToast('Invalid input','error');
+    showLoading(true);
+    try {
+        await db.collection('users').doc(resellerId).update({balance: firebase.firestore.FieldValue.increment(amount)});
+        showToast(`Added ₹${amount.toFixed(2)} balance`,'success');
+        document.getElementById('addBalanceAmount').value = '';
+        await loadResellers(); updateBalanceResellerSelects();
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+async function removeBalance(e) {
+    e.preventDefault();
+    const resellerId = document.getElementById('removeBalanceReseller').value;
+    const amount = parseFloat(document.getElementById('removeBalanceAmount').value);
+    if (!resellerId || !amount || amount <= 0) return showToast('Invalid input','error');
+    showLoading(true);
+    try {
+        await db.collection('users').doc(resellerId).update({balance: firebase.firestore.FieldValue.increment(-amount)});
+        showToast(`Removed ₹${amount.toFixed(2)} balance`,'success');
+        document.getElementById('removeBalanceAmount').value = '';
+        await loadResellers(); updateBalanceResellerSelects();
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+
+function initBroadcastPage() { document.getElementById('broadcastCount').textContent = resellersData.length; }
+async function sendBroadcast() {
+    const message = document.getElementById('broadcastMessage').value.trim();
+    if (!message) return showToast('Enter a message','error');
+    showLoading(true);
+    try {
+        await db.collection('broadcasts').add({message, sentBy: currentUser.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp(), recipients: resellersData.length});
+        showToast(`Broadcast sent to ${resellersData.length} resellers`,'success');
+        document.getElementById('broadcastMessage').value = '';
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+
+function initLogsPage() { renderLogsTable(logsData); }
+function renderLogsTable(data) {
+    const tbody = document.getElementById('logsTableBody');
+    if (!tbody) return;
+    if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No logs found</td></tr>'; return; }
+    tbody.innerHTML = data.map(log => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4 font-mono text-sm text-gray-600">${log.generatedKey || 'N/A'}</td><td class="px-6 py-4 text-sm text-gray-900">${log.resellerName || 'N/A'}</td><td class="px-6 py-4"><span class="text-xs font-semibold bg-primary-50 text-primary px-2 py-1 rounded">${log.plan || 'N/A'}</span></td><td class="px-6 py-4 text-sm font-semibold text-gray-900">₹${(log.price || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-600">₹${(log.balanceLeft || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${log.createdAt ? new Date(log.createdAt.toDate()).toLocaleString() : 'N/A'}</td></tr>`).join('');
+}
+function filterLogs() {
+    const query = document.getElementById('logSearch').value.toLowerCase();
+    const filtered = logsData.filter(l => (l.generatedKey || '').toLowerCase().includes(query) || (l.resellerName || '').toLowerCase().includes(query) || (l.plan || '').toLowerCase().includes(query));
+    renderLogsTable(filtered);
+}
+function loadMoreLogs() { logLimit += 20; loadLogs().then(() => initLogsPage()); }
+
+function initResetRequestsPage() {
+    const list = document.getElementById('resetRequestsList');
+    const count = document.getElementById('pendingCount');
+    if (!list) return;
+    count.textContent = resetRequestsData.length + ' Pending';
+    if (resetRequestsData.length === 0) list.innerHTML = '<div class="p-8 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-200"><use href="#icon-check-circle"/></svg><p>No pending requests</p></div>';
+    else list.innerHTML = resetRequestsData.map(req => `<div class="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><svg class="w-5 h-5 text-orange-500"><use href="#icon-key"/></svg></div><div><p class="text-sm font-semibold text-gray-900">${req.resellerName || 'Unknown'}</p><p class="text-xs text-gray-400 font-mono">${req.resetKey || 'N/A'}</p><p class="text-xs text-gray-400 mt-0.5">${req.createdAt ? new Date(req.createdAt.toDate()).toLocaleString() : 'N/A'}</p></div></div><button onclick="approveReset('${req.id}')" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Approve</button></div>`).join('');
+}
+async function approveReset(id) {
+    showLoading(true);
+    try {
+        await db.collection('resetRequests').doc(id).update({status: 'approved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp()});
+        showToast('Reset request approved','success');
+        await loadResetRequests(); initResetRequestsPage();
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+
+// ===== RESELLER FUNCTIONS =====
+function initResellerDashboard() {
+    document.getElementById('resellerBalanceDisplay').textContent = '₹' + (userData.balance || 0).toFixed(2);
+    const grid = document.getElementById('quickGenerateGrid');
+    if (grid) {
+        grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
+            const price = pricesData[plan] || defaultPrices[plan];
+            const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+            const disabled = count === 0 || (userData.balance || 0) < price;
+            const disabledClass = disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary hover:bg-primary-50 cursor-pointer';
+            return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p><p class="text-xs ${count < 5 ? 'text-red-500' : 'text-gray-400'} mt-1">${count} left</p></button>`;
+        }).join('');
+    }
+    const myLogs = logsData.filter(l => l.resellerId === currentUser.uid);
+    const list = document.getElementById('recentKeysList');
+    if (list) {
+        if (myLogs.length === 0) list.innerHTML = '<div class="p-8 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-200"><use href="#icon-key"/></svg><p>No keys generated yet</p></div>';
+        else list.innerHTML = myLogs.slice(0,5).map(log => `<div class="p-4 flex items-center gap-4"><div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-primary"><use href="#icon-key"/></svg></div><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-gray-900 font-mono">${log.generatedKey}</p><p class="text-xs text-gray-400">${log.plan} • ₹${(log.price || 0).toFixed(2)}</p></div><button onclick="copyToClipboard('${log.generatedKey}')" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-primary transition-colors"><svg class="w-4 h-4"><use href="#icon-copy"/></svg></button></div>`).join('');
+    }
+}
+function initMyBalance() { document.getElementById('myBalanceAmount').textContent = '₹' + (userData.balance || 0).toFixed(2); }
+function initStockLeft() {
+    const grid = document.getElementById('stockLeftGrid');
+    if (!grid) return;
+    grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
+        const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+        const price = pricesData[plan] || defaultPrices[plan];
+        const canAfford = (userData.balance || 0) >= price;
+        const affordClass = canAfford ? 'text-green-500' : 'text-red-500';
+        return `<div class="bg-gray-50 rounded-xl p-5 border border-gray-100 card-hover"><div class="flex items-center justify-between mb-3"><span class="font-display font-bold text-gray-900">${plan}</span><span class="text-xs text-gray-400">${label}</span></div><p class="text-3xl font-bold ${count < 5 ? 'text-red-500' : 'text-gray-900'}">${count}</p><p class="text-xs text-gray-400 mt-1">keys available</p><div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between"><span class="text-sm font-semibold text-primary">₹${price}</span><span class="text-xs ${affordClass} font-medium">${canAfford ? 'Affordable' : 'Insufficient'}</span></div></div>`;
+    }).join('');
+}
+function initResetKey() {
+    db.collection('resetRequests').where('resellerId','==',currentUser.uid).orderBy('createdAt','desc').get().then(snapshot => {
+        const myReqs = []; snapshot.forEach(doc => myReqs.push({id: doc.id, ...doc.data()}));
+        const list = document.getElementById('myResetRequests');
+        if (!list) return;
+        if (myReqs.length === 0) list.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No requests yet</div>';
+        else list.innerHTML = myReqs.map(req => `<div class="p-4 flex items-center justify-between"><div><p class="text-sm font-mono text-gray-700">${req.resetKey}</p><p class="text-xs text-gray-400">${req.createdAt ? new Date(req.createdAt.toDate()).toLocaleDateString() : 'N/A'}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full ${req.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}">${req.status === 'approved' ? 'Approved' : 'Pending'}</span></div>`).join('');
+    });
+}
+
+async function generateKey(plan) {
+    const price = pricesData[plan] || defaultPrices[plan];
+    if ((userData.balance || 0) < price) return showToast('Insufficient balance','error');
+    const stock = stockData[plan];
+    if (!stock || !stock.keys) return showToast('No stock available','error');
+    const availableKey = stock.keys.find(k => !k.used);
+    if (!availableKey) return showToast('Out of stock','error');
+    showLoading(true);
+    try {
+        const updatedKeys = stock.keys.map(k => { if (k.key === availableKey.key) return {...k, used: true, usedBy: currentUser.uid, usedAt: new Date().toISOString()}; return k; });
+        await db.collection('stock').doc(plan).update({keys: updatedKeys});
+        const newBalance = (userData.balance || 0) - price;
+        await db.collection('users').doc(currentUser.uid).update({balance: newBalance});
+        userData.balance = newBalance;
+        await db.collection('logs').add({resellerId: currentUser.uid, resellerName: userData.name, resellerUsername: userData.username || '', plan, generatedKey: availableKey.key, price, balanceLeft: newBalance, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+        stockData[plan].keys = updatedKeys;
+        logsData.unshift({resellerId: currentUser.uid, resellerName: userData.name, plan, generatedKey: availableKey.key, price, balanceLeft: newBalance});
+        document.getElementById('generatedKey').textContent = availableKey.key;
+        document.getElementById('generatedPlan').textContent = plan;
+        document.getElementById('generatedPrice').textContent = '₹' + price.toFixed(2);
+        document.getElementById('generatedBalance').textContent = '₹' + newBalance.toFixed(2);
+        document.getElementById('keyModal').classList.remove('hidden');
+        document.getElementById('headerBalance').textContent = '₹' + newBalance.toFixed(2);
+        showToast('Key generated successfully!','success');
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+function closeKeyModal() { document.getElementById('keyModal').classList.add('hidden'); initPage(currentPage); }
+function copyGeneratedKey() { copyToClipboard(document.getElementById('generatedKey').textContent); }
+
+async function submitResetRequest() {
+    const key = document.getElementById('resetKeyInput').value.trim();
+    if (!key) return showToast('Enter a key','error');
+    showLoading(true);
+    try {
+        await db.collection('resetRequests').add({resellerId: currentUser.uid, resellerName: userData.name, resellerUsername: userData.username || '', resetKey: key, status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+        showToast('Reset request submitted','success');
+        document.getElementById('resetKeyInput').value = '';
+        initResetKey();
+    } catch(e) { showToast(e.message,'error'); }
+    showLoading(false);
+}
+
+// ===== UTILITIES =====
+function showToast(message, type='info') {
+    const container = document.getElementById('toastContainer');
+    const colors = {success:'bg-green-500', error:'bg-red-500', info:'bg-gray-800', warning:'bg-amber-500'};
+    const icons = {success:'#icon-check-circle', error:'#icon-x-circle', info:'#icon-info', warning:'#icon-alert'};
+    const toast = document.createElement('div');
+    toast.className = `toast ${colors[type]} text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 min-w-[300px]`;
+    toast.innerHTML = `<svg class="w-5 h-5 flex-shrink-0"><use href="${icons[type]}"/></svg><span class="text-sm font-medium">${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; toast.style.transition = 'all 0.3s ease'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+function showLoading(show) {
+    const overlay = document.getElementById('loadingOverlay');
+    if (show) overlay.classList.remove('hidden'); else overlay.classList.add('hidden');
+    overlay.classList.add('flex');
+}
+function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard','success')); }
+function closeConfirmModal() { document.getElementById('confirmModal').classList.add('hidden'); confirmCallback = null; }
+document.getElementById('confirmAction').addEventListener('click', () => { if (confirmCallback) confirmCallback(); closeConfirmModal(); });
+</script>
+</body>
+</html>
