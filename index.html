@@ -135,12 +135,12 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 
 <script>
 const firebaseConfig = {
-    apiKey: "AIzaSyDjWE0I7nMLaUXyA1EiYmom3z1Z0tU05Ig",
-    authDomain: "novaesppanel.firebaseapp.com",
-    projectId: "novaesppanel",
-    storageBucket: "novaesppanel.firebasestorage.app",
-    messagingSenderId: "981294173021",
-    appId: "1:981294173021:web:4c1860131300dd33de76b4"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -161,34 +161,34 @@ const db = firebase.firestore();
 </div>
 
 <!-- AUTH PAGE -->
-<div id="authPage" class="h-[100dvh] flex flex-col items-center justify-center p-3 grid-pattern overflow-hidden">
-    <div class="w-full max-w-sm">
-        <div class="text-center mb-3 slide-in">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/30 mb-2">
-                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+<div id="authPage" class="min-h-screen flex items-center justify-center p-4 grid-pattern">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8 slide-in">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/30 mb-4">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
-            <h1 class="font-display text-2xl font-bold text-gray-900">NovaESP</h1>
-            <p class="text-gray-500 text-sm mt-0.5">Premium Reseller Panel</p>
+            <h1 class="font-display text-3xl font-bold text-gray-900">NovaESP</h1>
+            <p class="text-gray-500 mt-1">Premium Reseller Panel</p>
         </div>
         <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden scale-in">
             <div class="flex border-b border-gray-100">
-                <button id="loginTab" onclick="switchAuthTab('login')" class="flex-1 py-3 text-sm font-semibold text-primary border-b-2 border-primary transition-all">Sign In</button>
-                <button id="registerTab" onclick="switchAuthTab('register')" class="flex-1 py-3 text-sm font-semibold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-all">Sign Up</button>
+                <button id="loginTab" onclick="switchAuthTab('login')" class="flex-1 py-4 text-sm font-semibold text-primary border-b-2 border-primary transition-all">Sign In</button>
+                <button id="registerTab" onclick="switchAuthTab('register')" class="flex-1 py-4 text-sm font-semibold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-all">Sign Up</button>
             </div>
-            <div class="p-5">
-                <form id="loginForm" class="space-y-3" onsubmit="handleLogin(event)">
+            <div class="p-8">
+                <form id="loginForm" class="space-y-5" onsubmit="handleLogin(event)">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-mail"/></svg>
-                            <input type="email" id="loginEmail" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="you@example.com">
+                            <input type="email" id="loginEmail" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="you@example.com">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-lock"/></svg>
-                            <input type="password" id="loginPassword" required class="w-full pl-11 pr-11 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Enter your password">
+                            <input type="password" id="loginPassword" required class="w-full pl-11 pr-11 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Enter your password">
                             <button type="button" onclick="togglePassword('loginPassword', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg class="w-5 h-5"><use href="#icon-eye"/></svg></button>
                         </div>
                     </div>
@@ -196,57 +196,57 @@ const db = firebase.firestore();
                         <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"><span class="text-gray-600">Remember me</span></label>
                         <button type="button" onclick="showForgotPassword()" class="text-primary hover:text-primary-dark font-medium">Forgot password?</button>
                     </div>
-                    <button type="submit" id="loginBtn" class="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
+                    <button type="submit" id="loginBtn" class="w-full btn-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2">
                         <svg class="w-5 h-5"><use href="#icon-arrow-right"/></svg><span>Sign In</span>
                     </button>
                 </form>
-                <form id="registerForm" class="space-y-3 hidden" onsubmit="handleRegister(event)">
+                <form id="registerForm" class="space-y-5 hidden" onsubmit="handleRegister(event)">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-user"/></svg>
-                            <input type="text" id="regName" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="John Doe">
+                            <input type="text" id="regName" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="John Doe">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-mail"/></svg>
-                            <input type="email" id="regEmail" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="you@example.com">
+                            <input type="email" id="regEmail" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="you@example.com">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-lock"/></svg>
-                            <input type="password" id="regPassword" required minlength="6" class="w-full pl-11 pr-11 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Min 6 characters">
+                            <input type="password" id="regPassword" required minlength="6" class="w-full pl-11 pr-11 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Min 6 characters">
                             <button type="button" onclick="togglePassword('regPassword', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg class="w-5 h-5"><use href="#icon-eye"/></svg></button>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Account Type</label>
                         <div class="grid grid-cols-2 gap-3">
                             <label class="cursor-pointer">
                                 <input type="radio" name="accountType" value="reseller" checked class="peer sr-only">
-                                <div class="p-2 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
+                                <div class="p-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
                                     <svg class="w-6 h-6 mx-auto mb-1 text-gray-400 peer-checked:text-primary"><use href="#icon-users"/></svg>
                                     <span class="text-sm font-medium text-gray-600 peer-checked:text-primary">Reseller</span>
                                 </div>
                             </label>
                             <label class="cursor-pointer">
                                 <input type="radio" name="accountType" value="customer" class="peer sr-only">
-                                <div class="p-2 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
+                                <div class="p-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
                                     <svg class="w-6 h-6 mx-auto mb-1 text-gray-400 peer-checked:text-primary"><use href="#icon-user"/></svg>
                                     <span class="text-sm font-medium text-gray-600 peer-checked:text-primary">Customer</span>
                                 </div>
                             </label>
                         </div>
                     </div>
-                    <button type="submit" id="registerBtn" class="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
+                    <button type="submit" id="registerBtn" class="w-full btn-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2">
                         <svg class="w-5 h-5"><use href="#icon-check"/></svg><span>Create Account</span>
                     </button>
                 </form>
-                <div class="mt-3 text-center"><p class="text-xs text-gray-400">By signing in, you agree to our Terms of Service</p></div>
+                <div class="mt-6 text-center"><p class="text-xs text-gray-400">By signing in, you agree to our Terms of Service</p></div>
             </div>
         </div>
     </div>
@@ -500,11 +500,12 @@ const db = firebase.firestore();
 <template id="page-stock">
 <div class="space-y-6 slide-in">
     <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div class="p-6 border-b border-gray-50">
+        <div class="p-6 border-b border-gray-50 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-5 h-5 text-primary"><use href="#icon-upload"/></svg></div>
                 <div><h3 class="font-display text-lg font-bold text-gray-900">Upload Stock</h3><p class="text-sm text-gray-400">Add keys to inventory</p></div>
             </div>
+            <button onclick="clearAllStock()" class="text-sm font-medium text-red-500 hover:text-red-600 flex items-center gap-1"><svg class="w-4 h-4"><use href="#icon-trash"/></svg>Clear All</button>
         </div>
         <div class="p-6 space-y-4">
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -557,9 +558,9 @@ const db = firebase.firestore();
         </div>
         <div class="p-6">
             <form onsubmit="addReseller(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">User ID / Email</label><input type="text" id="resellerId" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Telegram ID or Email"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Username</label><input type="text" id="resellerUsername" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="@username"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label><input type="text" id="resellerName" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Full name"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">User ID / Email</label><input type="text" id="resellerId" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Telegram ID or Email"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label><input type="text" id="resellerUsername" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="@username"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label><input type="text" id="resellerName" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Full name"></div>
                 <div class="md:col-span-3"><button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Add Reseller</button></div>
             </form>
         </div>
@@ -610,8 +611,8 @@ const db = firebase.firestore();
         </div>
         <div class="p-6">
             <form onsubmit="addBalance(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Reseller</label><select id="addBalanceReseller" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus"><option value="">Select reseller...</option></select></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label><input type="number" id="addBalanceAmount" required min="1" step="0.01" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="0.00"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Reseller</label><select id="addBalanceReseller" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus"><option value="">Select reseller...</option></select></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (₹)</label><input type="number" id="addBalanceAmount" required min="1" step="0.01" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="0.00"></div>
                 <div class="md:col-span-3"><button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Add Balance</button></div>
             </form>
         </div>
@@ -625,8 +626,8 @@ const db = firebase.firestore();
         </div>
         <div class="p-6">
             <form onsubmit="removeBalance(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Reseller</label><select id="removeBalanceReseller" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus"><option value="">Select reseller...</option></select></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label><input type="number" id="removeBalanceAmount" required min="1" step="0.01" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="0.00"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Reseller</label><select id="removeBalanceReseller" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus"><option value="">Select reseller...</option></select></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (₹)</label><input type="number" id="removeBalanceAmount" required min="1" step="0.01" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="0.00"></div>
                 <div class="md:col-span-3"><button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors"><svg class="w-4 h-4"><use href="#icon-minus"/></svg>Remove Balance</button></div>
             </form>
         </div>
@@ -644,7 +645,7 @@ const db = firebase.firestore();
             </div>
         </div>
         <div class="p-6 space-y-4">
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Message</label><textarea id="broadcastMessage" rows="6" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus resize-none" placeholder="Type your message here..."></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Message</label><textarea id="broadcastMessage" rows="6" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus resize-none" placeholder="Type your message here..."></textarea></div>
             <div class="flex items-center justify-between">
                 <p class="text-xs text-gray-400">This will be sent to <span id="broadcastCount" class="font-semibold text-primary">0</span> resellers</p>
                 <button onclick="sendBroadcast()" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-send"/></svg>Send Broadcast</button>
@@ -817,13 +818,13 @@ const db = firebase.firestore();
         </div>
         <div class="p-6 space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Key to Reset</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Key to Reset</label>
                 <div class="relative">
                     <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-key"/></svg>
                     <input type="text" id="resetKeyInput" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus font-mono" placeholder="Enter key here...">
                 </div>
             </div>
-            <button onclick="submitResetRequest()" class="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
+            <button onclick="submitResetRequest()" class="w-full btn-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2">
                 <svg class="w-5 h-5"><use href="#icon-send"/></svg>Submit Request
             </button>
             <div class="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
@@ -1040,7 +1041,7 @@ async function loadAllData() {
     showLoading(false);
 }
 async function loadStock() {
-    const snapshot = await db.collection('stock').get();
+    const snapshot = await db.collection('stock').get({ source: 'server' });
     stockData = {}; snapshot.forEach(doc => { stockData[doc.id] = doc.data(); });
 }
 async function loadPrices() {
@@ -1148,6 +1149,27 @@ async function uploadStock() {
         await loadStock(); initStockPage();
     } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
+}
+
+async function clearAllStock() {
+    confirmCallback = async () => {
+        showLoading(true);
+        try {
+            const batch = db.batch();
+            for (const plan of Object.keys(planLabels)) {
+                const ref = db.collection('stock').doc(plan);
+                batch.delete(ref);
+            }
+            await batch.commit();
+            stockData = {};
+            showToast('All stock cleared','success');
+            initPage(currentPage);
+        } catch(e) { showToast(e.message,'error'); }
+        showLoading(false);
+    };
+    document.getElementById('confirmTitle').textContent = 'Clear All Stock';
+    document.getElementById('confirmMessage').textContent = 'Delete all stock from Firebase? This cannot be undone.';
+    document.getElementById('confirmModal').classList.remove('hidden');
 }
 
 function initResellersPage() { renderResellersTable(resellersData); updateBalanceResellerSelects(); }
