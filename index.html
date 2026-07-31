@@ -976,12 +976,27 @@ auth.onAuthStateChanged(async (user) => {
             userData = doc.data(); userData.uid = user.uid;
             if (user.email === OWNER_EMAIL) { userData.role = 'owner'; await db.collection('users').doc(user.uid).update({role:'owner'}); }
             showDashboard(); await loadAllData();
+            // Real-time balance listener
+            if (window.balanceUnsubscribe) window.balanceUnsubscribe();
+            window.balanceUnsubscribe = db.collection('users').doc(user.uid).onSnapshot((snap) => {
+                if (snap.exists) {
+                    const newData = snap.data();
+                    userData.balance = newData.balance || 0;
+                    document.getElementById('headerBalance').textContent = '₹' + (userData.balance).toFixed(2);
+                    if (document.getElementById('resellerBalanceDisplay')) document.getElementById('resellerBalanceDisplay').textContent = '₹' + (userData.balance).toFixed(2);
+                    if (document.getElementById('myBalanceAmount')) document.getElementById('myBalanceAmount').textContent = '₹' + (userData.balance).toFixed(2);
+                }
+            });
         } else {
             userData = {name: user.displayName||'User', email: user.email, role: 'customer', balance: 0, uid: user.uid};
             await db.collection('users').doc(user.uid).set(userData);
             showDashboard();
         }
-    } else { currentUser = null; userData = null; showAuth(); }
+    } else { 
+        currentUser = null; userData = null; 
+        if (window.balanceUnsubscribe) { window.balanceUnsubscribe(); window.balanceUnsubscribe = null; }
+        showAuth(); 
+    }
 });
 
 function showAuth() { document.getElementById('authPage').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
@@ -1225,7 +1240,11 @@ async function addBalance(e) {
     if (!resellerId || !amount || amount <= 0) return showToast('Invalid input','error');
     showLoading(true);
     try {
-        await db.collection('users').doc(resellerId).update({balance: firebase.firestore.FieldValue.increment(amount)});
+        const userDoc = await db.collection('users').doc(resellerId).get();
+        if (!userDoc.exists) { showToast('Reseller not found','error'); showLoading(false); return; }
+        const currentBalance = userDoc.data().balance || 0;
+        const newBalance = currentBalance + amount;
+        await db.collection('users').doc(resellerId).update({balance: newBalance});
         showToast(`Added ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('addBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
@@ -1239,7 +1258,12 @@ async function removeBalance(e) {
     if (!resellerId || !amount || amount <= 0) return showToast('Invalid input','error');
     showLoading(true);
     try {
-        await db.collection('users').doc(resellerId).update({balance: firebase.firestore.FieldValue.increment(-amount)});
+        const userDoc = await db.collection('users').doc(resellerId).get();
+        if (!userDoc.exists) { showToast('Reseller not found','error'); showLoading(false); return; }
+        const currentBalance = userDoc.data().balance || 0;
+        if (currentBalance < amount) { showToast('Insufficient balance to remove','error'); showLoading(false); return; }
+        const newBalance = currentBalance - amount;
+        await db.collection('users').doc(resellerId).update({balance: newBalance});
         showToast(`Removed ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('removeBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
