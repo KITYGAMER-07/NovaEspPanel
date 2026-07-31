@@ -146,8 +146,6 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 </script>
-</head>
-<body class="bg-gray-50 min-h-screen font-sans">
 
 <!-- Toast Container -->
 <div id="toastContainer" class="fixed top-4 right-4 z-[100] space-y-3"></div>
@@ -1085,6 +1083,7 @@ function initPage(page) {
         case 'myBalance': initMyBalance(); break;
         case 'stockLeft': initStockLeft(); break;
         case 'resetKey': initResetKey(); break;
+        case 'help': initHelpPage(); break;
     }
 }
 
@@ -1208,6 +1207,10 @@ async function updatePrice(plan) {
     showLoading(false);
 }
 
+function initBalancePage() {
+    updateBalanceResellerSelects();
+}
+
 function updateBalanceResellerSelects() {
     const options = resellersData.map(r => `<option value="${r.id}">${r.name} (₹${(r.balance || 0).toFixed(2)})</option>`).join('');
     const addSelect = document.getElementById('addBalanceReseller');
@@ -1329,6 +1332,10 @@ function initResetKey() {
         if (myReqs.length === 0) list.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No requests yet</div>';
         else list.innerHTML = myReqs.map(req => `<div class="p-4 flex items-center justify-between"><div><p class="text-sm font-mono text-gray-700">${req.resetKey}</p><p class="text-xs text-gray-400">${req.createdAt ? new Date(req.createdAt.toDate()).toLocaleDateString() : 'N/A'}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full ${req.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}">${req.status === 'approved' ? 'Approved' : 'Pending'}</span></div>`).join('');
     });
+}
+
+function initHelpPage() {
+    // Help page is static, no dynamic init needed
 }
 
 async function generateKey(plan) {
