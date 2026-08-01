@@ -168,7 +168,7 @@ const db = firebase.firestore();
                 <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
             <h1 class="font-display text-2xl font-bold text-gray-900">NovaESP</h1>
-            <p class="text-gray-500 text-sm mt-0.5">Premium Reseller Panel</p>
+            <p class="text-gray-500 text-sm mt-0.5">Reseller & Admin Panel</p>
         </div>
         <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden scale-in">
             <div class="flex border-b border-gray-100">
@@ -236,25 +236,6 @@ const db = firebase.firestore();
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-lock"/></svg>
                             <input type="password" id="regPassword" required minlength="6" class="w-full pl-11 pr-11 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Min 6 characters">
                             <button type="button" onclick="togglePassword('regPassword', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg class="w-5 h-5"><use href="#icon-eye"/></svg></button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <label class="cursor-pointer">
-                                <input type="radio" name="accountType" value="reseller" checked class="peer sr-only">
-                                <div class="p-2 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
-                                    <svg class="w-6 h-6 mx-auto mb-1 text-gray-400 peer-checked:text-primary"><use href="#icon-users"/></svg>
-                                    <span class="text-sm font-medium text-gray-600 peer-checked:text-primary">Reseller</span>
-                                </div>
-                            </label>
-                            <label class="cursor-pointer">
-                                <input type="radio" name="accountType" value="customer" class="peer sr-only">
-                                <div class="p-2 border-2 border-gray-200 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary-50 transition-all">
-                                    <svg class="w-6 h-6 mx-auto mb-1 text-gray-400 peer-checked:text-primary"><use href="#icon-user"/></svg>
-                                    <span class="text-sm font-medium text-gray-600 peer-checked:text-primary">Customer</span>
-                                </div>
-                            </label>
                         </div>
                     </div>
                     <button type="submit" id="registerBtn" class="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
@@ -965,7 +946,7 @@ async function handleRegister(e) {
         const username = document.getElementById('regUsername').value.trim();
         const email = document.getElementById('regEmail').value.trim();
         const password = document.getElementById('regPassword').value;
-        const role = document.querySelector('input[name="accountType"]:checked').value;
+        const role = 'reseller'; // Only reseller accounts allowed
 
         if (!telegramId) throw new Error('Telegram ID is required');
 
@@ -984,9 +965,9 @@ async function handleRegister(e) {
                 name: name || existing.name,
                 username: username || existing.username,
                 role: role,
-                // Keep existing balance, createdAt etc. from admin doc
+                // Keep existing balance, createdAt etc.
             });
-            showToast('Account linked! Your balance: ₹' + (existing.balance || 0).toFixed(2),'success');
+            showToast('Account linked! Balance will appear shortly.','success');
         } else {
             // Create fresh doc (fallback for customers or unlisted resellers)
             await db.collection('users').doc(telegramId).set({
@@ -1020,41 +1001,30 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         showLoading(true);
 
-        // 1. Try to find user doc by authUid field (for already-linked accounts)
+        // 1. Try to find user doc by authUid field
         let userDoc = null;
         let q = await db.collection('users').where('authUid', '==', user.uid).limit(1).get();
         if (!q.empty) {
             userDoc = q.docs[0];
         } else {
-            // 2. Fallback: find by email (admin may have set email when creating reseller)
+            // 2. Fallback: find by email and link authUid
             q = await db.collection('users').where('email', '==', user.email).limit(1).get();
             if (!q.empty) {
                 userDoc = q.docs[0];
-                // Link authUid to this doc so future logins are faster
                 await userDoc.ref.update({ authUid: user.uid });
-            } else {
-                // 3. Fallback: find by telegramId if email was not set by admin
-                // Check if user registered with a telegramId that matches an admin-created doc
-                // We can't query here since we don't know telegramId yet, but registration
-                // should have already linked it. This handles edge cases.
-                q = await db.collection('users').where('telegramId', '==', user.email.split('@')[0]).limit(1).get();
-                if (!q.empty) {
-                    userDoc = q.docs[0];
-                    await userDoc.ref.update({ authUid: user.uid, email: user.email });
-                }
             }
         }
 
         if (userDoc) {
             userData = userDoc.data();
             userData.uid = user.uid;
-            userData.docId = userDoc.id; // Firestore doc ID (Telegram ID for resellers)
+            userData.docId = userDoc.id; // This is the Firestore doc ID (Telegram ID for resellers)
             if (user.email === OWNER_EMAIL) { 
                 userData.role = 'owner'; 
                 await userDoc.ref.update({role:'owner'}); 
             }
         } else {
-            // No existing doc - create new one with UID as doc ID
+            // No existing doc - create new one with UID as doc ID (rare fallback)
             userData = {
                 name: user.displayName||'User', 
                 email: user.email, 
@@ -1067,16 +1037,12 @@ auth.onAuthStateChanged(async (user) => {
             await db.collection('users').doc(user.uid).set(userData);
         }
 
-        // CRITICAL FIX: Real-time listener on the CORRECT doc using docId
-        // Admin creates reseller with Telegram ID as doc ID. Registration links authUid.
-        // The listener MUST use userData.docId (Telegram ID) not user.uid.
+        // Real-time listener on the CORRECT doc (admin uses Telegram ID as doc ID)
         if (userUnsubscribe) userUnsubscribe();
         userUnsubscribe = db.collection('users').doc(userData.docId).onSnapshot(doc => {
             if (doc.exists) {
                 const oldBal = userData?.balance;
-                // Merge to preserve uid and docId which aren't in Firestore doc
-                const freshData = doc.data();
-                userData = { ...userData, ...freshData };
+                userData = doc.data();
                 userData.uid = currentUser.uid;
                 userData.docId = doc.id;
                 updateUserBalanceUI();
@@ -1425,7 +1391,6 @@ async function approveReset(id) {
 
 // ===== RESELLER FUNCTIONS =====
 function initResellerDashboard() {
-    // Ensure we have latest balance from listener
     document.getElementById('resellerBalanceDisplay').textContent = '₹' + (userData.balance || 0).toFixed(2);
     const grid = document.getElementById('quickGenerateGrid');
     if (grid) {
