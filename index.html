@@ -168,7 +168,7 @@ const db = firebase.firestore();
                 <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
             <h1 class="font-display text-2xl font-bold text-gray-900">NovaESP</h1>
-            <p class="text-gray-500 text-sm mt-0.5">Reseller & Admin Panel</p>
+            <p class="text-gray-500 text-sm mt-0.5">NovaESP - Admin & Reseller Panel</p>
         </div>
         <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden scale-in">
             <div class="flex border-b border-gray-100">
@@ -962,17 +962,22 @@ async function handleRegister(e) {
             await db.collection('users').doc(telegramId).update({
                 authUid: authUid,
                 email: email,
-                name: name || existing.name,
-                username: username || existing.username,
+                name: name || existing.name || name,
+                username: username || existing.username || username,
                 role: role,
-                // Keep existing balance, createdAt etc.
+                telegramId: telegramId
             });
             showToast('Account linked! Balance will appear shortly.','success');
         } else {
-            // Create fresh doc (fallback for customers or unlisted resellers)
+            // Create fresh doc for new reseller
             await db.collection('users').doc(telegramId).set({
-                name, email, role, balance: 0, 
-                telegramId, username, authUid: authUid,
+                name: name,
+                email: email,
+                role: role,
+                balance: 0,
+                telegramId: telegramId,
+                username: username,
+                authUid: authUid,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             showToast('Account created!','success');
@@ -1011,35 +1016,45 @@ auth.onAuthStateChanged(async (user) => {
             q = await db.collection('users').where('email', '==', user.email).limit(1).get();
             if (!q.empty) {
                 userDoc = q.docs[0];
-                await userDoc.ref.update({ authUid: user.uid });
+                await userDoc.ref.update({ authUid: user.uid, email: user.email });
             }
         }
 
         if (userDoc) {
             userData = userDoc.data();
             userData.uid = user.uid;
-            userData.docId = userDoc.id; // This is the Firestore doc ID (Telegram ID for resellers)
+            userData.docId = userDoc.id;
+            // Fix: Update email if it's temp/missing - use auth email
+            if (user.email && (!userData.email || userData.email.includes('@temp.com') || userData.email === '')) {
+                await userDoc.ref.update({ email: user.email });
+                userData.email = user.email;
+            }
             if (user.email === OWNER_EMAIL) { 
                 userData.role = 'owner'; 
                 await userDoc.ref.update({role:'owner'}); 
             }
         } else {
-            // No existing doc - create new one with UID as doc ID (rare fallback)
+            // No existing doc - create new reseller doc
+            const docId = user.email ? user.email.replace(/\./g, '_') : user.uid;
             userData = {
-                name: user.displayName||'User', 
-                email: user.email, 
-                role: 'customer', 
-                balance: 0, 
+                name: user.displayName || 'User',
+                email: user.email,
+                role: 'reseller',
+                balance: 0,
                 authUid: user.uid,
                 uid: user.uid,
-                docId: user.uid
+                docId: docId,
+                telegramId: docId,
+                username: '',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            await db.collection('users').doc(user.uid).set(userData);
+            await db.collection('users').doc(docId).set(userData);
         }
 
         // Real-time listener on the CORRECT doc (admin uses Telegram ID as doc ID)
         if (userUnsubscribe) userUnsubscribe();
-        userUnsubscribe = db.collection('users').doc(userData.docId).onSnapshot(doc => {
+        const listenerDocId = userData.docId || userData.telegramId || user.uid;
+        userUnsubscribe = db.collection('users').doc(listenerDocId).onSnapshot(doc => {
             if (doc.exists) {
                 const oldBal = userData?.balance;
                 userData = doc.data();
@@ -1261,9 +1276,12 @@ async function addReseller(e) {
     showLoading(true);
     try {
         await db.collection('users').doc(telegramId).set({
-            telegramId, username, name, 
-            email: telegramId.includes('@') ? telegramId : telegramId+'@temp.com', 
-            role: 'reseller', balance: 0, 
+            telegramId: telegramId,
+            username: username,
+            name: name,
+            email: '',
+            role: 'reseller',
+            balance: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         showToast('Reseller added successfully','success');
