@@ -72,6 +72,7 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="bg-gray-50 min-h-screen">
 <svg style="display:none">
@@ -983,9 +984,9 @@ async function handleRegister(e) {
                 name: name || existing.name,
                 username: username || existing.username,
                 role: role,
-                // Keep existing balance, createdAt etc.
+                // Keep existing balance, createdAt etc. from admin doc
             });
-            showToast('Account linked! Balance will appear shortly.','success');
+            showToast('Account linked! Your balance: ₹' + (existing.balance || 0).toFixed(2),'success');
         } else {
             // Create fresh doc (fallback for customers or unlisted resellers)
             await db.collection('users').doc(telegramId).set({
@@ -1019,30 +1020,41 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         showLoading(true);
 
-        // 1. Try to find user doc by authUid field
+        // 1. Try to find user doc by authUid field (for already-linked accounts)
         let userDoc = null;
         let q = await db.collection('users').where('authUid', '==', user.uid).limit(1).get();
         if (!q.empty) {
             userDoc = q.docs[0];
         } else {
-            // 2. Fallback: find by email and link authUid
+            // 2. Fallback: find by email (admin may have set email when creating reseller)
             q = await db.collection('users').where('email', '==', user.email).limit(1).get();
             if (!q.empty) {
                 userDoc = q.docs[0];
+                // Link authUid to this doc so future logins are faster
                 await userDoc.ref.update({ authUid: user.uid });
+            } else {
+                // 3. Fallback: find by telegramId if email was not set by admin
+                // Check if user registered with a telegramId that matches an admin-created doc
+                // We can't query here since we don't know telegramId yet, but registration
+                // should have already linked it. This handles edge cases.
+                q = await db.collection('users').where('telegramId', '==', user.email.split('@')[0]).limit(1).get();
+                if (!q.empty) {
+                    userDoc = q.docs[0];
+                    await userDoc.ref.update({ authUid: user.uid, email: user.email });
+                }
             }
         }
 
         if (userDoc) {
             userData = userDoc.data();
             userData.uid = user.uid;
-            userData.docId = userDoc.id; // This is the Firestore doc ID (Telegram ID for resellers)
+            userData.docId = userDoc.id; // Firestore doc ID (Telegram ID for resellers)
             if (user.email === OWNER_EMAIL) { 
                 userData.role = 'owner'; 
                 await userDoc.ref.update({role:'owner'}); 
             }
         } else {
-            // No existing doc - create new one with UID as doc ID (rare fallback)
+            // No existing doc - create new one with UID as doc ID
             userData = {
                 name: user.displayName||'User', 
                 email: user.email, 
@@ -1055,12 +1067,16 @@ auth.onAuthStateChanged(async (user) => {
             await db.collection('users').doc(user.uid).set(userData);
         }
 
-        // Real-time listener on the CORRECT doc (admin uses Telegram ID as doc ID)
+        // CRITICAL FIX: Real-time listener on the CORRECT doc using docId
+        // Admin creates reseller with Telegram ID as doc ID. Registration links authUid.
+        // The listener MUST use userData.docId (Telegram ID) not user.uid.
         if (userUnsubscribe) userUnsubscribe();
         userUnsubscribe = db.collection('users').doc(userData.docId).onSnapshot(doc => {
             if (doc.exists) {
                 const oldBal = userData?.balance;
-                userData = doc.data();
+                // Merge to preserve uid and docId which aren't in Firestore doc
+                const freshData = doc.data();
+                userData = { ...userData, ...freshData };
                 userData.uid = currentUser.uid;
                 userData.docId = doc.id;
                 updateUserBalanceUI();
@@ -1409,6 +1425,7 @@ async function approveReset(id) {
 
 // ===== RESELLER FUNCTIONS =====
 function initResellerDashboard() {
+    // Ensure we have latest balance from listener
     document.getElementById('resellerBalanceDisplay').textContent = '₹' + (userData.balance || 0).toFixed(2);
     const grid = document.getElementById('quickGenerateGrid');
     if (grid) {
