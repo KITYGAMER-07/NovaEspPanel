@@ -946,29 +946,62 @@ async function handleLogin(e) {
     btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
 
     try {
-        // First verify username exists in Firestore
-        const userQuery = await db.collection('users').where('username', '==', username).limit(1).get();
+        // Step 1: Sign in with Firebase Auth first (email + password)
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        const authUid = cred.user.uid;
 
-        if (userQuery.empty) {
-            throw new Error('Username not found. Please register first.');
+        // Step 2: After auth success, find user doc by authUid (single doc read - no query index needed)
+        let userDoc = null;
+        let userDataFromDB = null;
+
+        // Try by authUid first (most reliable, no index needed)
+        const docByUid = await db.collection('users').where('authUid', '==', authUid).limit(1).get();
+        if (!docByUid.empty) {
+            userDoc = docByUid.docs[0];
+            userDataFromDB = userDoc.data();
+        } else {
+            // Fallback: try by email
+            const docByEmail = await db.collection('users').where('email', '==', email).limit(1).get();
+            if (!docByEmail.empty) {
+                userDoc = docByEmail.docs[0];
+                userDataFromDB = userDoc.data();
+                // Link authUid
+                await userDoc.ref.update({ authUid: authUid });
+            }
         }
 
-        const userDoc = userQuery.docs[0];
-        const userDataFromDB = userDoc.data();
-
-        // Verify email matches
-        if (userDataFromDB.email !== email) {
-            throw new Error('Email does not match this username.');
+        if (!userDoc) {
+            // No user doc found - create one
+            const newDocId = username || email.replace(/\./g, '_');
+            await db.collection('users').doc(newDocId).set({
+                name: username || 'User',
+                email: email,
+                username: username,
+                role: 'reseller',
+                balance: 0,
+                authUid: authUid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showToast('Welcome, ' + username + '!','success');
+            return;
         }
 
-        // Sign in with Firebase Auth using email + password
-        await auth.signInWithEmailAndPassword(email, password);
+        // Step 3: Verify username matches (if user has a username set)
+        if (userDataFromDB.username && userDataFromDB.username !== username) {
+            // Username mismatch - sign out and show error
+            await auth.signOut();
+            throw new Error('Username does not match this account. Please check your username.');
+        }
 
-        // Update username in Firestore (in case it changed or needs sync)
-        await userDoc.ref.update({
-            username: username,
+        // Step 4: Update username and last login in Firestore
+        const updateData = {
             lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        if (!userDataFromDB.username || userDataFromDB.username === '') {
+            updateData.username = username;
+        }
+        await userDoc.ref.update(updateData);
 
         showToast('Welcome back, ' + (userDataFromDB.name || username) + '!','success');
     } catch(err) {
@@ -993,9 +1026,9 @@ async function handleRegister(e) {
         if (!username) throw new Error('Username is required');
         if (username.includes(' ')) throw new Error('Username cannot contain spaces');
 
-        // Check if username already exists
-        const usernameCheck = await db.collection('users').where('username', '==', username).limit(1).get();
-        if (!usernameCheck.empty) {
+        // Check if username already exists by trying to get the doc directly (no query needed)
+        const usernameDocCheck = await db.collection('users').doc(username).get();
+        if (usernameDocCheck.exists) {
             throw new Error('Username already taken. Please choose another.');
         }
 
@@ -1022,7 +1055,7 @@ async function handleRegister(e) {
             });
             showToast('Account linked to admin record!','success');
         } else {
-            // Create fresh doc with username as document ID
+            // Create fresh doc with username as document ID (direct doc write - no query)
             await db.collection('users').doc(username).set({
                 name: name,
                 email: email,
@@ -1059,17 +1092,37 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         showLoading(true);
 
-        // 1. Try to find user doc by authUid field
+        // 1. Try to find user doc by authUid field (single query - should work with basic rules)
         let userDoc = null;
-        let q = await db.collection('users').where('authUid', '==', user.uid).limit(1).get();
-        if (!q.empty) {
-            userDoc = q.docs[0];
-        } else {
-            // 2. Fallback: find by email and link authUid
-            q = await db.collection('users').where('email', '==', user.email).limit(1).get();
+        try {
+            let q = await db.collection('users').where('authUid', '==', user.uid).limit(1).get();
             if (!q.empty) {
                 userDoc = q.docs[0];
-                await userDoc.ref.update({ authUid: user.uid, email: user.email });
+            } else {
+                // 2. Fallback: find by email
+                q = await db.collection('users').where('email', '==', user.email).limit(1).get();
+                if (!q.empty) {
+                    userDoc = q.docs[0];
+                    await userDoc.ref.update({ authUid: user.uid, email: user.email });
+                }
+            }
+        } catch (queryErr) {
+            console.error('Query error (permissions?):', queryErr);
+            // If queries fail, try direct doc access by known patterns
+            const possibleIds = [
+                user.email ? user.email.replace(/\./g, '_') : null,
+                user.displayName ? user.displayName.toLowerCase().replace(/\s/g, '') : null
+            ].filter(Boolean);
+
+            for (const testId of possibleIds) {
+                try {
+                    const directDoc = await db.collection('users').doc(testId).get();
+                    if (directDoc.exists) {
+                        userDoc = directDoc;
+                        await directDoc.ref.update({ authUid: user.uid });
+                        break;
+                    }
+                } catch (e) { /* continue */ }
             }
         }
 
@@ -1077,14 +1130,13 @@ auth.onAuthStateChanged(async (user) => {
             userData = userDoc.data();
             userData.uid = user.uid;
             userData.docId = userDoc.id;
-            // Fix: Update email if it's temp/missing - use auth email
+            // Fix: Update email if it's temp/missing
             if (user.email && (!userData.email || userData.email.includes('@temp.com') || userData.email === '')) {
                 await userDoc.ref.update({ email: user.email });
                 userData.email = user.email;
             }
-            // Update username on every login (sync with login form input if needed)
+            // Update username on every login
             if (!userData.username || userData.username === '') {
-                // Try to get username from login form if available
                 const loginUsername = document.getElementById('loginUsername');
                 if (loginUsername && loginUsername.value.trim()) {
                     await userDoc.ref.update({ username: loginUsername.value.trim().toLowerCase() });
@@ -1096,7 +1148,7 @@ auth.onAuthStateChanged(async (user) => {
                 await userDoc.ref.update({role:'owner'}); 
             }
         } else {
-            // No existing doc - create new reseller doc with email as doc ID
+            // No existing doc - create new reseller doc
             const docId = user.email ? user.email.replace(/\./g, '_') : user.uid;
             userData = {
                 name: user.displayName || 'User',
@@ -1110,28 +1162,46 @@ auth.onAuthStateChanged(async (user) => {
                 username: '',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            await db.collection('users').doc(docId).set(userData);
+            try {
+                await db.collection('users').doc(docId).set(userData);
+            } catch (createErr) {
+                console.error('Failed to create user doc:', createErr);
+                showToast('Permission denied. Please contact admin.','error');
+                showLoading(false);
+                await auth.signOut();
+                return;
+            }
         }
 
-        // Real-time listener on the CORRECT doc
+        // Real-time listener on the CORRECT doc (direct doc access - no query)
         if (userUnsubscribe) userUnsubscribe();
         const listenerDocId = userData.docId || userData.username || user.uid;
-        userUnsubscribe = db.collection('users').doc(listenerDocId).onSnapshot(doc => {
-            if (doc.exists) {
-                const oldBal = userData?.balance;
-                userData = doc.data();
-                userData.uid = currentUser.uid;
-                userData.docId = doc.id;
-                updateUserBalanceUI();
-                // Refresh reseller pages if balance changed
-                if (oldBal !== userData.balance && ['resellerDashboard','myBalance','stockLeft','resetKey'].includes(currentPage)) {
-                    initPage(currentPage);
+        try {
+            userUnsubscribe = db.collection('users').doc(listenerDocId).onSnapshot(doc => {
+                if (doc.exists) {
+                    const oldBal = userData?.balance;
+                    userData = doc.data();
+                    userData.uid = currentUser.uid;
+                    userData.docId = doc.id;
+                    updateUserBalanceUI();
+                    if (oldBal !== userData.balance && ['resellerDashboard','myBalance','stockLeft','resetKey'].includes(currentPage)) {
+                        initPage(currentPage);
+                    }
                 }
-            }
-        });
+            }, err => {
+                console.error('Snapshot error:', err);
+            });
+        } catch (listenErr) {
+            console.error('Failed to attach listener:', listenErr);
+        }
 
-        // Load ALL Firebase data BEFORE showing dashboard so nothing is empty
-        await loadAllData();
+        // Load ALL Firebase data BEFORE showing dashboard
+        try {
+            await loadAllData();
+        } catch (loadErr) {
+            console.error('Failed to load data:', loadErr);
+            showToast('Some data could not be loaded','warning');
+        }
         showLoading(false);
         showDashboard();
     } else {
@@ -1199,43 +1269,96 @@ function toggleSidebar() {
 async function loadAllData() {
     showLoading(true);
     try { 
-        await Promise.all([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]);
-        // Re-render current page with fresh Firebase data so reload shows correct values
+        await Promise.allSettled([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]);
         initPage(currentPage);
     }
-    catch(e) { console.error(e); }
+    catch(e) { 
+        console.error('Load all data error:', e); 
+        showToast('Some data could not be loaded','warning');
+    }
     showLoading(false);
 }
 async function loadStock() {
-    const snapshot = await db.collection('stock').get();
-    stockData = {}; snapshot.forEach(doc => { stockData[doc.id] = doc.data(); });
+    try {
+        const snapshot = await db.collection('stock').get();
+        stockData = {}; snapshot.forEach(doc => { stockData[doc.id] = doc.data(); });
+    } catch (err) {
+        console.error('Load stock error:', err);
+        stockData = {};
+    }
 }
 async function loadPrices() {
-    const snapshot = await db.collection('prices').get();
-    pricesData = {}; snapshot.forEach(doc => { pricesData[doc.id] = doc.data().price; });
-    for (const [plan, price] of Object.entries(defaultPrices)) {
-        if (!pricesData[plan]) { pricesData[plan] = price; db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()}); }
+    try {
+        const snapshot = await db.collection('prices').get();
+        pricesData = {}; snapshot.forEach(doc => { pricesData[doc.id] = doc.data().price; });
+        for (const [plan, price] of Object.entries(defaultPrices)) {
+            if (!pricesData[plan]) { 
+                pricesData[plan] = price; 
+                try {
+                    await db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+                } catch (e) { console.error('Set default price error:', e); }
+            }
+        }
+    } catch (err) {
+        console.error('Load prices error:', err);
+        pricesData = {...defaultPrices};
     }
 }
 async function loadResellers() {
-    const snapshot = await db.collection('users').where('role','==','reseller').get();
-    resellersData = []; snapshot.forEach(doc => { resellersData.push({id: doc.id, ...doc.data()}); });
+    try {
+        const snapshot = await db.collection('users').where('role','==','reseller').get();
+        resellersData = []; snapshot.forEach(doc => { resellersData.push({id: doc.id, ...doc.data()}); });
+    } catch (err) {
+        console.error('Load resellers error:', err);
+        resellersData = [];
+    }
 }
 async function loadLogs() {
-    const snapshot = await db.collection('logs').orderBy('createdAt','desc').limit(logLimit).get();
-    logsData = []; snapshot.forEach(doc => { logsData.push({id: doc.id, ...doc.data()}); });
+    try {
+        const snapshot = await db.collection('logs').limit(logLimit).get();
+        logsData = []; snapshot.forEach(doc => { logsData.push({id: doc.id, ...doc.data()}); });
+        // Sort client-side by createdAt
+        logsData.sort((a, b) => {
+            const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+            const bTime = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+            return bTime - aTime;
+        });
+    } catch (err) {
+        console.error('Load logs error:', err);
+        logsData = [];
+    }
 }
 async function loadResetRequests() {
-    const snapshot = await db.collection('resetRequests').where('status','==','pending').get();
-    resetRequestsData = []; snapshot.forEach(doc => { resetRequestsData.push({id: doc.id, ...doc.data()}); });
-    updateResetBadge();
+    try {
+        const snapshot = await db.collection('resetRequests').where('status','==','pending').get();
+        resetRequestsData = []; snapshot.forEach(doc => { resetRequestsData.push({id: doc.id, ...doc.data()}); });
+        // Sort client-side
+        resetRequestsData.sort((a, b) => {
+            const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+            const bTime = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+            return bTime - aTime;
+        });
+        updateResetBadge();
+    } catch (err) {
+        console.error('Load reset requests error:', err);
+        resetRequestsData = [];
+        updateResetBadge();
+    }
 }
 function updateResetBadge() {
     const badge = document.getElementById('resetBadge');
     if (resetRequestsData.length > 0) { badge.textContent = resetRequestsData.length; badge.classList.remove('hidden'); }
     else badge.classList.add('hidden');
 }
-function refreshData() { loadAllData().then(() => { initPage(currentPage); showToast('Data refreshed','success'); }); }
+function refreshData() { 
+    loadAllData().then(() => { 
+        initPage(currentPage); 
+        showToast('Data refreshed','success'); 
+    }).catch(err => {
+        console.error('Refresh error:', err);
+        showToast('Refresh failed','error');
+    }); 
+}
 
 // ===== PAGE INITIALIZERS =====
 function initPage(page) {
@@ -1313,8 +1436,12 @@ async function uploadStock() {
         await db.collection('stock').doc(selectedPlan).set({keys: allKeys});
         showToast(`Uploaded ${newKeys.length} keys for ${selectedPlan}`,'success');
         document.getElementById('stockKeysInput').value = '';
-        await loadStock(); initStockPage();
-    } catch(e) { showToast(e.message,'error'); }
+        await loadStock(); 
+        initStockPage();
+    } catch(e) { 
+        console.error('Upload stock error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 
@@ -1332,16 +1459,16 @@ function filterResellers() {
 }
 async function addReseller(e) {
     e.preventDefault();
-    const id = document.getElementById('resellerId').value.trim();
+    const id = document.getElementById('resellerId').value.trim().toLowerCase();
     const username = document.getElementById('resellerUsername').value.trim().toLowerCase();
     const name = document.getElementById('resellerName').value.trim();
     showLoading(true);
     try {
-        // Use username as doc ID if provided, otherwise use the ID field
-        const docId = username || id;
+        // Use id (username) as doc ID
+        const docId = id;
         await db.collection('users').doc(docId).set({
             username: username || id,
-            telegramId: id,
+            telegramId: '',
             name: name,
             email: '',
             role: 'reseller',
@@ -1349,16 +1476,30 @@ async function addReseller(e) {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         showToast('Reseller added successfully','success');
-        document.getElementById('resellerId').value = ''; document.getElementById('resellerUsername').value = ''; document.getElementById('resellerName').value = '';
-        await loadResellers(); initResellersPage();
-    } catch(e) { showToast(e.message,'error'); }
+        document.getElementById('resellerId').value = ''; 
+        document.getElementById('resellerUsername').value = ''; 
+        document.getElementById('resellerName').value = '';
+        await loadResellers(); 
+        initResellersPage();
+    } catch(e) { 
+        console.error('Add reseller error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 function confirmRemoveReseller(id, name) {
     confirmCallback = async () => {
         showLoading(true);
-        try { await db.collection('users').doc(id).delete(); showToast('Reseller removed','success'); await loadResellers(); initResellersPage(); }
-        catch(e) { showToast(e.message,'error'); }
+        try { 
+            await db.collection('users').doc(id).delete(); 
+            showToast('Reseller removed','success'); 
+            await loadResellers(); 
+            initResellersPage(); 
+        }
+        catch(e) { 
+            console.error('Remove reseller error:', e);
+            showToast('Error: ' + e.message,'error'); 
+        }
         showLoading(false);
     };
     document.getElementById('confirmTitle').textContent = 'Remove Reseller';
@@ -1380,9 +1521,16 @@ async function updatePrice(plan) {
     if (isNaN(price) || price < 0) return showToast('Invalid price','error');
     showLoading(true);
     try {
-        await db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
-        pricesData[plan] = price; showToast(`Price updated for ${plan}`,'success');
-    } catch(e) { showToast(e.message,'error'); }
+        await db.collection('prices').doc(plan).set({
+            price, 
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        pricesData[plan] = price; 
+        showToast(`Price updated for ${plan}`,'success');
+    } catch(e) { 
+        console.error('Update price error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 
@@ -1408,7 +1556,10 @@ async function addBalance(e) {
         showToast(`Added ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('addBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
-    } catch(e) { showToast(e.message,'error'); }
+    } catch(e) { 
+        console.error('Add balance error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 async function removeBalance(e) {
@@ -1422,7 +1573,10 @@ async function removeBalance(e) {
         showToast(`Removed ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('removeBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
-    } catch(e) { showToast(e.message,'error'); }
+    } catch(e) { 
+        console.error('Remove balance error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 
@@ -1432,10 +1586,18 @@ async function sendBroadcast() {
     if (!message) return showToast('Enter a message','error');
     showLoading(true);
     try {
-        await db.collection('broadcasts').add({message, sentBy: currentUser.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp(), recipients: resellersData.length});
+        await db.collection('broadcasts').add({
+            message, 
+            sentBy: currentUser.uid, 
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(), 
+            recipients: resellersData.length
+        });
         showToast(`Broadcast sent to ${resellersData.length} resellers`,'success');
         document.getElementById('broadcastMessage').value = '';
-    } catch(e) { showToast(e.message,'error'); }
+    } catch(e) { 
+        console.error('Broadcast error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 
@@ -1451,7 +1613,13 @@ function filterLogs() {
     const filtered = logsData.filter(l => (l.generatedKey || '').toLowerCase().includes(query) || (l.resellerName || '').toLowerCase().includes(query) || (l.plan || '').toLowerCase().includes(query));
     renderLogsTable(filtered);
 }
-function loadMoreLogs() { logLimit += 20; loadLogs().then(() => initLogsPage()); }
+function loadMoreLogs() { 
+    logLimit += 20; 
+    loadLogs().then(() => initLogsPage()).catch(err => {
+        console.error('Load more logs error:', err);
+        showToast('Could not load more logs','error');
+    }); 
+}
 
 function initResetRequestsPage() {
     const list = document.getElementById('resetRequestsList');
@@ -1464,10 +1632,17 @@ function initResetRequestsPage() {
 async function approveReset(id) {
     showLoading(true);
     try {
-        await db.collection('resetRequests').doc(id).update({status: 'approved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp()});
+        await db.collection('resetRequests').doc(id).update({
+            status: 'approved', 
+            resolvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         showToast('Reset request approved','success');
-        await loadResetRequests(); initResetRequestsPage();
-    } catch(e) { showToast(e.message,'error'); }
+        await loadResetRequests(); 
+        initResetRequestsPage();
+    } catch(e) { 
+        console.error('Approve reset error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 
@@ -1504,12 +1679,23 @@ function initStockLeft() {
     }).join('');
 }
 function initResetKey() {
-    db.collection('resetRequests').where('resellerDocId','==',userData.docId).orderBy('createdAt','desc').get().then(snapshot => {
+    // Remove orderBy to avoid composite index requirement - sort client-side instead
+    db.collection('resetRequests').where('resellerDocId','==',userData.docId).get().then(snapshot => {
         const myReqs = []; snapshot.forEach(doc => myReqs.push({id: doc.id, ...doc.data()}));
+        // Sort by createdAt client-side
+        myReqs.sort((a, b) => {
+            const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+            const bTime = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+            return bTime - aTime;
+        });
         const list = document.getElementById('myResetRequests');
         if (!list) return;
         if (myReqs.length === 0) list.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No requests yet</div>';
         else list.innerHTML = myReqs.map(req => `<div class="p-4 flex items-center justify-between"><div><p class="text-sm font-mono text-gray-700">${req.resetKey}</p><p class="text-xs text-gray-400">${req.createdAt ? new Date(req.createdAt.toDate()).toLocaleDateString() : 'N/A'}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full ${req.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}">${req.status === 'approved' ? 'Approved' : 'Pending'}</span></div>`).join('');
+    }).catch(err => {
+        console.error('Reset requests load error:', err);
+        const list = document.getElementById('myResetRequests');
+        if (list) list.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">Unable to load requests</div>';
     });
 }
 
@@ -1527,21 +1713,41 @@ async function generateKey(plan) {
     showLoading(true);
     try {
         const updatedKeys = stock.keys.map(k => { if (k.key === availableKey.key) return {...k, used: true, usedBy: userData.docId, usedAt: new Date().toISOString()}; return k; });
+
+        // Use direct doc references (no queries)
         await db.collection('stock').doc(plan).update({keys: updatedKeys});
-        // Atomic decrement to prevent race conditions with admin balance updates
         await db.collection('users').doc(userData.docId).update({balance: firebase.firestore.FieldValue.increment(-price)});
+
         const newBalance = (userData.balance || 0) - price;
+
+        // Add log entry
         await db.collection('logs').add({
-            resellerDocId: userData.docId, resellerId: userData.username || userData.docId,
-            resellerName: userData.name, resellerUsername: userData.username || '', 
-            plan, generatedKey: availableKey.key, price, balanceLeft: newBalance, 
+            resellerDocId: userData.docId, 
+            resellerId: userData.username || userData.docId,
+            resellerName: userData.name, 
+            resellerUsername: userData.username || '', 
+            plan, 
+            generatedKey: availableKey.key, 
+            price, 
+            balanceLeft: newBalance, 
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
+        // Update local data
         stockData[plan].keys = updatedKeys;
         logsData.unshift({
-            resellerDocId: userData.docId, resellerId: userData.username || userData.docId,
-            resellerName: userData.name, plan, generatedKey: availableKey.key, price, balanceLeft: newBalance
+            resellerDocId: userData.docId, 
+            resellerId: userData.username || userData.docId,
+            resellerName: userData.name, 
+            plan, 
+            generatedKey: availableKey.key, 
+            price, 
+            balanceLeft: newBalance
         });
+
+        // Update userData balance locally
+        userData.balance = newBalance;
+
         document.getElementById('generatedKey').textContent = availableKey.key;
         document.getElementById('generatedPlan').textContent = plan;
         document.getElementById('generatedPrice').textContent = '₹' + price.toFixed(2);
@@ -1549,7 +1755,10 @@ async function generateKey(plan) {
         document.getElementById('keyModal').classList.remove('hidden');
         updateUserBalanceUI();
         showToast('Key generated successfully!','success');
-    } catch(e) { showToast(e.message,'error'); }
+    } catch(e) { 
+        console.error('Generate key error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 function closeKeyModal() { document.getElementById('keyModal').classList.add('hidden'); initPage(currentPage); }
@@ -1561,15 +1770,21 @@ async function submitResetRequest() {
     showLoading(true);
     try {
         await db.collection('resetRequests').add({
-            resellerDocId: userData.docId, resellerId: userData.username || userData.docId,
-            resellerName: userData.name, resellerUsername: userData.username || '', 
-            resetKey: key, status: 'pending', 
+            resellerDocId: userData.docId, 
+            resellerId: userData.username || userData.docId,
+            resellerName: userData.name, 
+            resellerUsername: userData.username || '', 
+            resetKey: key, 
+            status: 'pending', 
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         showToast('Reset request submitted','success');
         document.getElementById('resetKeyInput').value = '';
         initResetKey();
-    } catch(e) { showToast(e.message,'error'); }
+    } catch(e) { 
+        console.error('Submit reset error:', e);
+        showToast('Error: ' + e.message,'error'); 
+    }
     showLoading(false);
 }
 
