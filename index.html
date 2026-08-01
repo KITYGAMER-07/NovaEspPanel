@@ -71,6 +71,7 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="bg-gray-50 min-h-screen">
 <svg style="display:none">
@@ -894,6 +895,7 @@ let resetRequestsData = [];
 let selectedPlan = null;
 let confirmCallback = null;
 let logLimit = 20;
+let userUnsubscribe = null;
 
 const defaultPrices = {'5H':5,'1D':10,'3D':30,'7D':50,'15D':90,'30D':120,'60D':200};
 const planLabels = {'5H':'5 Hours','1D':'1 Day','3D':'3 Days','7D':'7 Days','15D':'15 Days','30D':'30 Days','60D':'60 Days'};
@@ -971,42 +973,72 @@ function logout() { auth.signOut(); showToast('Logged out','info'); }
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
-        const doc = await db.collection('users').doc(user.uid).get();
+        showLoading(true);
+
+        // Try to get user doc by Firebase Auth UID
+        let doc = await db.collection('users').doc(user.uid).get();
+
+        // If admin created a reseller doc with email/ID before user registered,
+        // migrate it to UID-based doc so balance/stock work correctly
+        if (!doc.exists) {
+            const q = await db.collection('users').where('email','==',user.email).where('role','in',['reseller','customer']).limit(1).get();
+            if (!q.empty) {
+                const existing = q.docs[0];
+                userData = existing.data();
+                userData.uid = user.uid;
+                await db.collection('users').doc(user.uid).set(userData);
+                await db.collection('users').doc(existing.id).delete();
+                doc = await db.collection('users').doc(user.uid).get();
+            }
+        }
+
         if (doc.exists) {
             userData = doc.data(); userData.uid = user.uid;
             if (user.email === OWNER_EMAIL) { userData.role = 'owner'; await db.collection('users').doc(user.uid).update({role:'owner'}); }
-            showDashboard(); await loadAllData();
-            // Real-time balance listener
-            if (window.balanceUnsubscribe) window.balanceUnsubscribe();
-            window.balanceUnsubscribe = db.collection('users').doc(user.uid).onSnapshot((snap) => {
-                if (snap.exists) {
-                    const newData = snap.data();
-                    userData.balance = newData.balance || 0;
-                    document.getElementById('headerBalance').textContent = '₹' + (userData.balance).toFixed(2);
-                    if (document.getElementById('resellerBalanceDisplay')) document.getElementById('resellerBalanceDisplay').textContent = '₹' + (userData.balance).toFixed(2);
-                    if (document.getElementById('myBalanceAmount')) document.getElementById('myBalanceAmount').textContent = '₹' + (userData.balance).toFixed(2);
-                }
-            });
         } else {
             userData = {name: user.displayName||'User', email: user.email, role: 'customer', balance: 0, uid: user.uid};
             await db.collection('users').doc(user.uid).set(userData);
-            showDashboard();
         }
-    } else { 
-        currentUser = null; userData = null; 
-        if (window.balanceUnsubscribe) { window.balanceUnsubscribe(); window.balanceUnsubscribe = null; }
-        showAuth(); 
+
+        // Real-time listener: updates balance & UI instantly when admin changes it
+        if (userUnsubscribe) userUnsubscribe();
+        userUnsubscribe = db.collection('users').doc(user.uid).onSnapshot(doc => {
+            if (doc.exists) {
+                userData = doc.data();
+                userData.uid = user.uid;
+                updateUserBalanceUI();
+                if (['resellerDashboard','myBalance','stockLeft','resetKey'].includes(currentPage)) {
+                    initPage(currentPage);
+                }
+            }
+        });
+
+        // Load all global data (stock, prices, resellers, logs) BEFORE rendering page
+        await loadAllData();
+        showLoading(false);
+        showDashboard();
+    } else {
+        if (userUnsubscribe) { userUnsubscribe(); userUnsubscribe = null; }
+        currentUser = null; userData = null; showAuth();
     }
 });
 
 function showAuth() { document.getElementById('authPage').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
+function updateUserBalanceUI() {
+    const bal = (userData?.balance || 0).toFixed(2);
+    const headerBal = document.getElementById('headerBalance');
+    if (headerBal) headerBal.textContent = '₹' + bal;
+    const userRole = document.getElementById('userRole');
+    if (userRole) userRole.textContent = userData?.role === 'owner' ? 'Owner' : 'Reseller';
+    const userName = document.getElementById('userName');
+    if (userName) userName.textContent = userData?.name || 'User';
+    const userAvatar = document.getElementById('userAvatar');
+    if (userAvatar) userAvatar.textContent = (userData?.name || 'U').charAt(0).toUpperCase();
+}
 function showDashboard() {
     document.getElementById('authPage').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
-    document.getElementById('userName').textContent = userData.name || 'User';
-    document.getElementById('userRole').textContent = userData.role === 'owner' ? 'Owner' : 'Reseller';
-    document.getElementById('userAvatar').textContent = (userData.name || 'U').charAt(0).toUpperCase();
-    document.getElementById('headerBalance').textContent = '₹' + (userData.balance || 0).toFixed(2);
+    updateUserBalanceUI();
     if (userData.role === 'owner') {
         document.getElementById('ownerMenu').classList.remove('hidden');
         document.getElementById('resellerMenu').classList.add('hidden');
@@ -1048,7 +1080,11 @@ function toggleSidebar() {
 // ===== DATA LOADING =====
 async function loadAllData() {
     showLoading(true);
-    try { await Promise.all([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]); }
+    try { 
+        await Promise.all([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]);
+        // Re-render current page so stock/prices/logs reflect fresh Firebase data
+        initPage(currentPage);
+    }
     catch(e) { console.error(e); }
     showLoading(false);
 }
@@ -1240,11 +1276,7 @@ async function addBalance(e) {
     if (!resellerId || !amount || amount <= 0) return showToast('Invalid input','error');
     showLoading(true);
     try {
-        const userDoc = await db.collection('users').doc(resellerId).get();
-        if (!userDoc.exists) { showToast('Reseller not found','error'); showLoading(false); return; }
-        const currentBalance = userDoc.data().balance || 0;
-        const newBalance = currentBalance + amount;
-        await db.collection('users').doc(resellerId).update({balance: newBalance});
+        await db.collection('users').doc(resellerId).update({balance: firebase.firestore.FieldValue.increment(amount)});
         showToast(`Added ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('addBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
@@ -1258,12 +1290,7 @@ async function removeBalance(e) {
     if (!resellerId || !amount || amount <= 0) return showToast('Invalid input','error');
     showLoading(true);
     try {
-        const userDoc = await db.collection('users').doc(resellerId).get();
-        if (!userDoc.exists) { showToast('Reseller not found','error'); showLoading(false); return; }
-        const currentBalance = userDoc.data().balance || 0;
-        if (currentBalance < amount) { showToast('Insufficient balance to remove','error'); showLoading(false); return; }
-        const newBalance = currentBalance - amount;
-        await db.collection('users').doc(resellerId).update({balance: newBalance});
+        await db.collection('users').doc(resellerId).update({balance: firebase.firestore.FieldValue.increment(-amount)});
         showToast(`Removed ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('removeBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
@@ -1373,9 +1400,9 @@ async function generateKey(plan) {
     try {
         const updatedKeys = stock.keys.map(k => { if (k.key === availableKey.key) return {...k, used: true, usedBy: currentUser.uid, usedAt: new Date().toISOString()}; return k; });
         await db.collection('stock').doc(plan).update({keys: updatedKeys});
+        // Use atomic increment to prevent race conditions if admin adds balance simultaneously
+        await db.collection('users').doc(currentUser.uid).update({balance: firebase.firestore.FieldValue.increment(-price)});
         const newBalance = (userData.balance || 0) - price;
-        await db.collection('users').doc(currentUser.uid).update({balance: newBalance});
-        userData.balance = newBalance;
         await db.collection('logs').add({resellerId: currentUser.uid, resellerName: userData.name, resellerUsername: userData.username || '', plan, generatedKey: availableKey.key, price, balanceLeft: newBalance, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
         stockData[plan].keys = updatedKeys;
         logsData.unshift({resellerId: currentUser.uid, resellerName: userData.name, plan, generatedKey: availableKey.key, price, balanceLeft: newBalance});
@@ -1384,7 +1411,8 @@ async function generateKey(plan) {
         document.getElementById('generatedPrice').textContent = '₹' + price.toFixed(2);
         document.getElementById('generatedBalance').textContent = '₹' + newBalance.toFixed(2);
         document.getElementById('keyModal').classList.remove('hidden');
-        document.getElementById('headerBalance').textContent = '₹' + newBalance.toFixed(2);
+        // Balance UI will auto-update via onSnapshot, but update immediately for modal feel
+        updateUserBalanceUI();
         showToast('Key generated successfully!','success');
     } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
