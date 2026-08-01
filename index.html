@@ -73,7 +73,6 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
-<base target="_blank">
 </head>
 <body class="bg-gray-50 min-h-screen">
 <svg style="display:none">
@@ -179,13 +178,6 @@ const db = firebase.firestore();
             <div class="p-5">
                 <form id="loginForm" class="space-y-3" onsubmit="handleLogin(event)">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                        <div class="relative">
-                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-user"/></svg>
-                            <input type="text" id="loginUsername" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="Enter your username">
-                        </div>
-                    </div>
-                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-mail"/></svg>
@@ -217,20 +209,19 @@ const db = firebase.firestore();
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Username <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telegram ID <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-hash"/></svg>
-                            <input type="text" id="regUsername" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="your_username (no spaces)">
+                            <input type="text" id="regTelegramId" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="123456789 (same as admin added)">
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">This will be your login username</p>
+                        <p class="text-xs text-gray-400 mt-1">Enter the same Telegram ID given to admin</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Telegram ID (Optional)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telegram Username</label>
                         <div class="relative">
-                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-hash"/></svg>
-                            <input type="text" id="regTelegramId" class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="123456789">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-user"/></svg>
+                            <input type="text" id="regUsername" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="@username">
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Optional: If admin added you with Telegram ID</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
@@ -562,8 +553,8 @@ const db = firebase.firestore();
         </div>
         <div class="p-6">
             <form onsubmit="addReseller(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Username <span class="text-red-500">*</span></label><input type="text" id="resellerId" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="username (no spaces)"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Telegram Username (Optional)</label><input type="text" id="resellerUsername" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="@username"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Telegram ID</label><input type="text" id="resellerId" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Telegram ID or Email"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Username</label><input type="text" id="resellerUsername" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="@username"></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label><input type="text" id="resellerName" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Full name"></div>
                 <div class="md:col-span-3"><button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Add Reseller</button></div>
             </form>
@@ -582,7 +573,7 @@ const db = firebase.firestore();
         </div>
         <div class="overflow-x-auto">
             <table class="w-full">
-                <thead class="bg-gray-50"><tr><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Reseller</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Username</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Balance</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Joined</th><th class="text-right text-xs font-semibold text-gray-500 uppercase px-6 py-4">Actions</th></tr></thead>
+                <thead class="bg-gray-50"><tr><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Reseller</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">ID</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Balance</th><th class="text-left text-xs font-semibold text-gray-500 uppercase px-6 py-4">Joined</th><th class="text-right text-xs font-semibold text-gray-500 uppercase px-6 py-4">Actions</th></tr></thead>
                 <tbody class="divide-y divide-gray-50" id="resellersTableBody"></tbody>
             </table>
         </div>
@@ -933,77 +924,11 @@ function closeForgotModal() { document.getElementById('forgotModal').classList.a
 async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
-    const username = document.getElementById('loginUsername').value.trim().toLowerCase();
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-
-    if (!username || !email || !password) {
-        showToast('Please fill all fields','error');
-        return;
-    }
-
     btn.disabled = true;
     btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
-
     try {
-        // Step 1: Sign in with Firebase Auth first (email + password)
-        const cred = await auth.signInWithEmailAndPassword(email, password);
-        const authUid = cred.user.uid;
-
-        // Step 2: After auth success, find user doc by authUid (single doc read - no query index needed)
-        let userDoc = null;
-        let userDataFromDB = null;
-
-        // Try by authUid first (most reliable, no index needed)
-        const docByUid = await db.collection('users').where('authUid', '==', authUid).limit(1).get();
-        if (!docByUid.empty) {
-            userDoc = docByUid.docs[0];
-            userDataFromDB = userDoc.data();
-        } else {
-            // Fallback: try by email
-            const docByEmail = await db.collection('users').where('email', '==', email).limit(1).get();
-            if (!docByEmail.empty) {
-                userDoc = docByEmail.docs[0];
-                userDataFromDB = userDoc.data();
-                // Link authUid
-                await userDoc.ref.update({ authUid: authUid });
-            }
-        }
-
-        if (!userDoc) {
-            // No user doc found - create one
-            const newDocId = username || email.replace(/\./g, '_');
-            await db.collection('users').doc(newDocId).set({
-                name: username || 'User',
-                email: email,
-                username: username,
-                role: 'reseller',
-                balance: 0,
-                authUid: authUid,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            showToast('Welcome, ' + username + '!','success');
-            return;
-        }
-
-        // Step 3: Verify username matches (if user has a username set)
-        if (userDataFromDB.username && userDataFromDB.username !== username) {
-            // Username mismatch - sign out and show error
-            await auth.signOut();
-            throw new Error('Username does not match this account. Please check your username.');
-        }
-
-        // Step 4: Update username and last login in Firestore
-        const updateData = {
-            lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (!userDataFromDB.username || userDataFromDB.username === '') {
-            updateData.username = username;
-        }
-        await userDoc.ref.update(updateData);
-
-        showToast('Welcome back, ' + (userDataFromDB.name || username) + '!','success');
+        await auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
+        showToast('Welcome back!','success');
     } catch(err) {
         showToast(err.message,'error');
         btn.disabled = false;
@@ -1017,56 +942,45 @@ async function handleRegister(e) {
     btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
     try {
         const name = document.getElementById('regName').value.trim();
-        const username = document.getElementById('regUsername').value.trim().toLowerCase();
         const telegramId = document.getElementById('regTelegramId').value.trim();
+        const username = document.getElementById('regUsername').value.trim();
         const email = document.getElementById('regEmail').value.trim();
         const password = document.getElementById('regPassword').value;
-        const role = 'reseller';
+        const role = 'reseller'; // Only reseller accounts allowed
 
-        if (!username) throw new Error('Username is required');
-        if (username.includes(' ')) throw new Error('Username cannot contain spaces');
-
-        // Check if username already exists by trying to get the doc directly (no query needed)
-        const usernameDocCheck = await db.collection('users').doc(username).get();
-        if (usernameDocCheck.exists) {
-            throw new Error('Username already taken. Please choose another.');
-        }
+        if (!telegramId) throw new Error('Telegram ID is required');
 
         const cred = await auth.createUserWithEmailAndPassword(email, password);
         const authUid = cred.user.uid;
 
-        // Check if admin already created a reseller doc with this telegramId (optional linking)
-        let adminDoc = null;
-        if (telegramId) {
-            adminDoc = await db.collection('users').doc(telegramId).get();
-        }
+        // Check if admin already created a reseller doc with this telegramId
+        const adminDoc = await db.collection('users').doc(telegramId).get();
 
-        if (adminDoc && adminDoc.exists) {
+        if (adminDoc.exists) {
             // Link Firebase Auth to existing admin-created doc
             const existing = adminDoc.data();
             await db.collection('users').doc(telegramId).update({
                 authUid: authUid,
                 email: email,
                 name: name || existing.name || name,
-                username: username,
+                username: username || existing.username || username,
                 role: role,
-                telegramId: telegramId || existing.telegramId || '',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                telegramId: telegramId
             });
-            showToast('Account linked to admin record!','success');
+            showToast('Account linked! Balance will appear shortly.','success');
         } else {
-            // Create fresh doc with username as document ID (direct doc write - no query)
-            await db.collection('users').doc(username).set({
+            // Create fresh doc for new reseller
+            await db.collection('users').doc(telegramId).set({
                 name: name,
                 email: email,
                 role: role,
                 balance: 0,
+                telegramId: telegramId,
                 username: username,
-                telegramId: telegramId || '',
                 authUid: authUid,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            showToast('Account created successfully!','success');
+            showToast('Account created!','success');
         }
     } catch(err) {
         showToast(err.message,'error');
@@ -1092,33 +1006,17 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         showLoading(true);
 
-        // Strategy: Try direct doc access ONLY - no queries
+        // 1. Try to find user doc by authUid field
         let userDoc = null;
-        let foundId = null;
-
-        // Try multiple possible document IDs
-        const possibleIds = [
-            user.email ? user.email.replace(/\./g, '_') : null,
-            user.displayName ? user.displayName.toLowerCase().replace(/\s/g, '') : null,
-            user.uid
-        ].filter(Boolean);
-
-        // Also try to get username from login form
-        const loginUsernameEl = document.getElementById('loginUsername');
-        if (loginUsernameEl && loginUsernameEl.value.trim()) {
-            possibleIds.unshift(loginUsernameEl.value.trim().toLowerCase());
-        }
-
-        for (const testId of possibleIds) {
-            try {
-                const directDoc = await db.collection('users').doc(testId).get();
-                if (directDoc.exists) {
-                    userDoc = directDoc;
-                    foundId = testId;
-                    break;
-                }
-            } catch (e) { 
-                console.log('Doc access failed for ID:', testId, e.message);
+        let q = await db.collection('users').where('authUid', '==', user.uid).limit(1).get();
+        if (!q.empty) {
+            userDoc = q.docs[0];
+        } else {
+            // 2. Fallback: find by email and link authUid
+            q = await db.collection('users').where('email', '==', user.email).limit(1).get();
+            if (!q.empty) {
+                userDoc = q.docs[0];
+                await userDoc.ref.update({ authUid: user.uid, email: user.email });
             }
         }
 
@@ -1126,46 +1024,18 @@ auth.onAuthStateChanged(async (user) => {
             userData = userDoc.data();
             userData.uid = user.uid;
             userData.docId = userDoc.id;
-
-            // Link authUid if missing
-            if (!userData.authUid) {
-                try {
-                    await userDoc.ref.update({ authUid: user.uid });
-                    userData.authUid = user.uid;
-                } catch (e) { console.log('Could not update authUid:', e.message); }
-            }
-
-            // Fix email if temp/missing
+            // Fix: Update email if it's temp/missing - use auth email
             if (user.email && (!userData.email || userData.email.includes('@temp.com') || userData.email === '')) {
-                try {
-                    await userDoc.ref.update({ email: user.email });
-                    userData.email = user.email;
-                } catch (e) { console.log('Could not update email:', e.message); }
+                await userDoc.ref.update({ email: user.email });
+                userData.email = user.email;
             }
-
-            // Update username from login form
-            if (loginUsernameEl && loginUsernameEl.value.trim()) {
-                const formUsername = loginUsernameEl.value.trim().toLowerCase();
-                if (!userData.username || userData.username === '') {
-                    try {
-                        await userDoc.ref.update({ username: formUsername });
-                        userData.username = formUsername;
-                    } catch (e) { console.log('Could not update username:', e.message); }
-                }
-            }
-
             if (user.email === OWNER_EMAIL) { 
                 userData.role = 'owner'; 
-                try {
-                    await userDoc.ref.update({role:'owner'});
-                } catch (e) { console.log('Could not update role:', e.message); }
+                await userDoc.ref.update({role:'owner'}); 
             }
         } else {
             // No existing doc - create new reseller doc
-            const docId = loginUsernameEl && loginUsernameEl.value.trim() 
-                ? loginUsernameEl.value.trim().toLowerCase() 
-                : (user.email ? user.email.replace(/\./g, '_') : user.uid);
-
+            const docId = user.email ? user.email.replace(/\./g, '_') : user.uid;
             userData = {
                 name: user.displayName || 'User',
                 email: user.email,
@@ -1174,50 +1044,32 @@ auth.onAuthStateChanged(async (user) => {
                 authUid: user.uid,
                 uid: user.uid,
                 docId: docId,
-                telegramId: '',
-                username: loginUsernameEl ? loginUsernameEl.value.trim().toLowerCase() : '',
+                telegramId: docId,
+                username: '',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            try {
-                await db.collection('users').doc(docId).set(userData);
-            } catch (createErr) {
-                console.error('Failed to create user doc:', createErr);
-                showToast('Permission denied. Please contact admin.','error');
-                showLoading(false);
-                await auth.signOut();
-                return;
-            }
+            await db.collection('users').doc(docId).set(userData);
         }
 
-        // Real-time listener on the CORRECT doc (direct doc access only)
+        // Real-time listener on the CORRECT doc (admin uses Telegram ID as doc ID)
         if (userUnsubscribe) userUnsubscribe();
-        const listenerDocId = userData.docId || userData.username || user.uid;
-        try {
-            userUnsubscribe = db.collection('users').doc(listenerDocId).onSnapshot(doc => {
-                if (doc.exists) {
-                    const oldBal = userData?.balance;
-                    userData = doc.data();
-                    userData.uid = currentUser.uid;
-                    userData.docId = doc.id;
-                    updateUserBalanceUI();
-                    if (oldBal !== userData.balance && ['resellerDashboard','myBalance','stockLeft','resetKey'].includes(currentPage)) {
-                        initPage(currentPage);
-                    }
+        const listenerDocId = userData.docId || userData.telegramId || user.uid;
+        userUnsubscribe = db.collection('users').doc(listenerDocId).onSnapshot(doc => {
+            if (doc.exists) {
+                const oldBal = userData?.balance;
+                userData = doc.data();
+                userData.uid = currentUser.uid;
+                userData.docId = doc.id;
+                updateUserBalanceUI();
+                // Refresh reseller pages if balance changed
+                if (oldBal !== userData.balance && ['resellerDashboard','myBalance','stockLeft','resetKey'].includes(currentPage)) {
+                    initPage(currentPage);
                 }
-            }, err => {
-                console.error('Snapshot error:', err);
-            });
-        } catch (listenErr) {
-            console.error('Failed to attach listener:', listenErr);
-        }
+            }
+        });
 
-        // Load data
-        try {
-            await loadAllData();
-        } catch (loadErr) {
-            console.error('Failed to load data:', loadErr);
-            showToast('Some data could not be loaded','warning');
-        }
+        // Load ALL Firebase data BEFORE showing dashboard so nothing is empty
+        await loadAllData();
         showLoading(false);
         showDashboard();
     } else {
@@ -1285,114 +1137,43 @@ function toggleSidebar() {
 async function loadAllData() {
     showLoading(true);
     try { 
-        await Promise.allSettled([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]);
+        await Promise.all([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]);
+        // Re-render current page with fresh Firebase data so reload shows correct values
         initPage(currentPage);
     }
-    catch(e) { 
-        console.error('Load all data error:', e); 
-        showToast('Some data could not be loaded','warning');
-    }
+    catch(e) { console.error(e); }
     showLoading(false);
 }
 async function loadStock() {
-    try {
-        const snapshot = await db.collection('stock').get();
-        stockData = {}; snapshot.forEach(doc => { stockData[doc.id] = doc.data(); });
-    } catch (err) {
-        console.error('Load stock error:', err);
-        stockData = {};
-    }
+    const snapshot = await db.collection('stock').get();
+    stockData = {}; snapshot.forEach(doc => { stockData[doc.id] = doc.data(); });
 }
 async function loadPrices() {
-    try {
-        const snapshot = await db.collection('prices').get();
-        pricesData = {}; snapshot.forEach(doc => { pricesData[doc.id] = doc.data().price; });
-        for (const [plan, price] of Object.entries(defaultPrices)) {
-            if (!pricesData[plan]) { 
-                pricesData[plan] = price; 
-                try {
-                    await db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
-                } catch (e) { console.error('Set default price error:', e); }
-            }
-        }
-    } catch (err) {
-        console.error('Load prices error:', err);
-        pricesData = {...defaultPrices};
+    const snapshot = await db.collection('prices').get();
+    pricesData = {}; snapshot.forEach(doc => { pricesData[doc.id] = doc.data().price; });
+    for (const [plan, price] of Object.entries(defaultPrices)) {
+        if (!pricesData[plan]) { pricesData[plan] = price; db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()}); }
     }
 }
 async function loadResellers() {
-    try {
-        // Get ALL users and filter client-side (avoids query index issues)
-        const snapshot = await db.collection('users').get();
-        resellersData = []; 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.role === 'reseller') {
-                resellersData.push({id: doc.id, ...data});
-            }
-        });
-    } catch (err) {
-        console.error('Load resellers error:', err);
-        resellersData = [];
-    }
+    const snapshot = await db.collection('users').where('role','==','reseller').get();
+    resellersData = []; snapshot.forEach(doc => { resellersData.push({id: doc.id, ...doc.data()}); });
 }
 async function loadLogs() {
-    try {
-        // Get all logs and sort client-side (avoids composite index)
-        const snapshot = await db.collection('logs').get();
-        logsData = []; 
-        snapshot.forEach(doc => { logsData.push({id: doc.id, ...doc.data()}); });
-        // Sort client-side by createdAt
-        logsData.sort((a, b) => {
-            const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
-            const bTime = b.createdAt ? b.createdAt.toDate().getTime() : 0;
-            return bTime - aTime;
-        });
-        // Apply limit client-side
-        logsData = logsData.slice(0, logLimit);
-    } catch (err) {
-        console.error('Load logs error:', err);
-        logsData = [];
-    }
+    const snapshot = await db.collection('logs').orderBy('createdAt','desc').limit(logLimit).get();
+    logsData = []; snapshot.forEach(doc => { logsData.push({id: doc.id, ...doc.data()}); });
 }
 async function loadResetRequests() {
-    try {
-        // Get ALL reset requests and filter/sort client-side
-        const snapshot = await db.collection('resetRequests').get();
-        resetRequestsData = []; 
-        snapshot.forEach(doc => { 
-            const data = doc.data();
-            if (data.status === 'pending') {
-                resetRequestsData.push({id: doc.id, ...data});
-            }
-        });
-        // Sort client-side
-        resetRequestsData.sort((a, b) => {
-            const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
-            const bTime = b.createdAt ? b.createdAt.toDate().getTime() : 0;
-            return bTime - aTime;
-        });
-        updateResetBadge();
-    } catch (err) {
-        console.error('Load reset requests error:', err);
-        resetRequestsData = [];
-        updateResetBadge();
-    }
+    const snapshot = await db.collection('resetRequests').where('status','==','pending').get();
+    resetRequestsData = []; snapshot.forEach(doc => { resetRequestsData.push({id: doc.id, ...doc.data()}); });
+    updateResetBadge();
 }
 function updateResetBadge() {
     const badge = document.getElementById('resetBadge');
     if (resetRequestsData.length > 0) { badge.textContent = resetRequestsData.length; badge.classList.remove('hidden'); }
     else badge.classList.add('hidden');
 }
-function refreshData() { 
-    loadAllData().then(() => { 
-        initPage(currentPage); 
-        showToast('Data refreshed','success'); 
-    }).catch(err => {
-        console.error('Refresh error:', err);
-        showToast('Refresh failed','error');
-    }); 
-}
+function refreshData() { loadAllData().then(() => { initPage(currentPage); showToast('Data refreshed','success'); }); }
 
 // ===== PAGE INITIALIZERS =====
 function initPage(page) {
@@ -1432,7 +1213,7 @@ function initDashboard() {
     const logsList = document.getElementById('recentLogsList');
     if (logsList) {
         if (logsData.length === 0) logsList.innerHTML = '<div class="p-8 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-200"><use href="#icon-activity"/></svg><p>No activity yet</p></div>';
-        else logsList.innerHTML = logsData.slice(0,10).map(log => `<div class="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"><div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-primary"><use href="#icon-key"/></svg></div><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-gray-900 truncate">${log.generatedKey || 'Unknown'}</p><p class="text-xs text-gray-400">${log.resellerName || 'Unknown'} (@${log.resellerUsername || log.resellerId || 'N/A'}) • ${log.plan || 'N/A'}</p></div><div class="text-right"><p class="text-sm font-semibold text-primary">₹${(log.price || 0).toFixed(2)}</p><p class="text-xs text-gray-400">${log.createdAt ? new Date(log.createdAt.toDate()).toLocaleDateString() : 'N/A'}</p></div></div>`).join('');
+        else logsList.innerHTML = logsData.slice(0,10).map(log => `<div class="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"><div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-primary"><use href="#icon-key"/></svg></div><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-gray-900 truncate">${log.generatedKey || 'Unknown'}</p><p class="text-xs text-gray-400">${log.resellerName || 'Unknown'} • ${log.plan || 'N/A'}</p></div><div class="text-right"><p class="text-sm font-semibold text-primary">₹${(log.price || 0).toFixed(2)}</p><p class="text-xs text-gray-400">${log.createdAt ? new Date(log.createdAt.toDate()).toLocaleDateString() : 'N/A'}</p></div></div>`).join('');
     }
 }
 
@@ -1470,12 +1251,8 @@ async function uploadStock() {
         await db.collection('stock').doc(selectedPlan).set({keys: allKeys});
         showToast(`Uploaded ${newKeys.length} keys for ${selectedPlan}`,'success');
         document.getElementById('stockKeysInput').value = '';
-        await loadStock(); 
-        initStockPage();
-    } catch(e) { 
-        console.error('Upload stock error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+        await loadStock(); initStockPage();
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 
@@ -1484,7 +1261,7 @@ function renderResellersTable(data) {
     const tbody = document.getElementById('resellersTableBody');
     if (!tbody) return;
     if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No resellers found</td></tr>'; return; }
-    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.username || r.id}</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
+    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.telegramId || r.id}</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
 }
 function filterResellers() {
     const query = document.getElementById('resellerSearch').value.toLowerCase();
@@ -1493,16 +1270,14 @@ function filterResellers() {
 }
 async function addReseller(e) {
     e.preventDefault();
-    const id = document.getElementById('resellerId').value.trim().toLowerCase();
-    const username = document.getElementById('resellerUsername').value.trim().toLowerCase();
+    const telegramId = document.getElementById('resellerId').value.trim();
+    const username = document.getElementById('resellerUsername').value.trim();
     const name = document.getElementById('resellerName').value.trim();
     showLoading(true);
     try {
-        // Use id (username) as doc ID
-        const docId = id;
-        await db.collection('users').doc(docId).set({
-            username: username || id,
-            telegramId: '',
+        await db.collection('users').doc(telegramId).set({
+            telegramId: telegramId,
+            username: username,
             name: name,
             email: '',
             role: 'reseller',
@@ -1510,30 +1285,16 @@ async function addReseller(e) {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         showToast('Reseller added successfully','success');
-        document.getElementById('resellerId').value = ''; 
-        document.getElementById('resellerUsername').value = ''; 
-        document.getElementById('resellerName').value = '';
-        await loadResellers(); 
-        initResellersPage();
-    } catch(e) { 
-        console.error('Add reseller error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+        document.getElementById('resellerId').value = ''; document.getElementById('resellerUsername').value = ''; document.getElementById('resellerName').value = '';
+        await loadResellers(); initResellersPage();
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 function confirmRemoveReseller(id, name) {
     confirmCallback = async () => {
         showLoading(true);
-        try { 
-            await db.collection('users').doc(id).delete(); 
-            showToast('Reseller removed','success'); 
-            await loadResellers(); 
-            initResellersPage(); 
-        }
-        catch(e) { 
-            console.error('Remove reseller error:', e);
-            showToast('Error: ' + e.message,'error'); 
-        }
+        try { await db.collection('users').doc(id).delete(); showToast('Reseller removed','success'); await loadResellers(); initResellersPage(); }
+        catch(e) { showToast(e.message,'error'); }
         showLoading(false);
     };
     document.getElementById('confirmTitle').textContent = 'Remove Reseller';
@@ -1555,16 +1316,9 @@ async function updatePrice(plan) {
     if (isNaN(price) || price < 0) return showToast('Invalid price','error');
     showLoading(true);
     try {
-        await db.collection('prices').doc(plan).set({
-            price, 
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        pricesData[plan] = price; 
-        showToast(`Price updated for ${plan}`,'success');
-    } catch(e) { 
-        console.error('Update price error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+        await db.collection('prices').doc(plan).set({price, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+        pricesData[plan] = price; showToast(`Price updated for ${plan}`,'success');
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 
@@ -1573,7 +1327,7 @@ function initBalancePage() {
 }
 
 function updateBalanceResellerSelects() {
-    const options = resellersData.map(r => `<option value="${r.id}">${r.name} (@${r.username || r.id}) - ₹${(r.balance || 0).toFixed(2)}</option>`).join('');
+    const options = resellersData.map(r => `<option value="${r.id}">${r.name} (₹${(r.balance || 0).toFixed(2)})</option>`).join('');
     const addSelect = document.getElementById('addBalanceReseller');
     const removeSelect = document.getElementById('removeBalanceReseller');
     if (addSelect) addSelect.innerHTML = '<option value="">Select reseller...</option>' + options;
@@ -1590,10 +1344,7 @@ async function addBalance(e) {
         showToast(`Added ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('addBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
-    } catch(e) { 
-        console.error('Add balance error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 async function removeBalance(e) {
@@ -1607,10 +1358,7 @@ async function removeBalance(e) {
         showToast(`Removed ₹${amount.toFixed(2)} balance`,'success');
         document.getElementById('removeBalanceAmount').value = '';
         await loadResellers(); updateBalanceResellerSelects();
-    } catch(e) { 
-        console.error('Remove balance error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 
@@ -1620,18 +1368,10 @@ async function sendBroadcast() {
     if (!message) return showToast('Enter a message','error');
     showLoading(true);
     try {
-        await db.collection('broadcasts').add({
-            message, 
-            sentBy: currentUser.uid, 
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(), 
-            recipients: resellersData.length
-        });
+        await db.collection('broadcasts').add({message, sentBy: currentUser.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp(), recipients: resellersData.length});
         showToast(`Broadcast sent to ${resellersData.length} resellers`,'success');
         document.getElementById('broadcastMessage').value = '';
-    } catch(e) { 
-        console.error('Broadcast error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 
@@ -1640,20 +1380,14 @@ function renderLogsTable(data) {
     const tbody = document.getElementById('logsTableBody');
     if (!tbody) return;
     if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No logs found</td></tr>'; return; }
-    tbody.innerHTML = data.map(log => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4 font-mono text-sm text-gray-600">${log.generatedKey || 'N/A'}</td><td class="px-6 py-4 text-sm text-gray-900">${log.resellerName || 'N/A'} <span class="text-xs text-gray-400">(@${log.resellerUsername || log.resellerId || 'N/A'})</span></td><td class="px-6 py-4"><span class="text-xs font-semibold bg-primary-50 text-primary px-2 py-1 rounded">${log.plan || 'N/A'}</span></td><td class="px-6 py-4 text-sm font-semibold text-gray-900">₹${(log.price || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-600">₹${(log.balanceLeft || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${log.createdAt ? new Date(log.createdAt.toDate()).toLocaleString() : 'N/A'}</td></tr>`).join('');
+    tbody.innerHTML = data.map(log => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4 font-mono text-sm text-gray-600">${log.generatedKey || 'N/A'}</td><td class="px-6 py-4 text-sm text-gray-900">${log.resellerName || 'N/A'}</td><td class="px-6 py-4"><span class="text-xs font-semibold bg-primary-50 text-primary px-2 py-1 rounded">${log.plan || 'N/A'}</span></td><td class="px-6 py-4 text-sm font-semibold text-gray-900">₹${(log.price || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-600">₹${(log.balanceLeft || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${log.createdAt ? new Date(log.createdAt.toDate()).toLocaleString() : 'N/A'}</td></tr>`).join('');
 }
 function filterLogs() {
     const query = document.getElementById('logSearch').value.toLowerCase();
     const filtered = logsData.filter(l => (l.generatedKey || '').toLowerCase().includes(query) || (l.resellerName || '').toLowerCase().includes(query) || (l.plan || '').toLowerCase().includes(query));
     renderLogsTable(filtered);
 }
-function loadMoreLogs() { 
-    logLimit += 20; 
-    loadLogs().then(() => initLogsPage()).catch(err => {
-        console.error('Load more logs error:', err);
-        showToast('Could not load more logs','error');
-    }); 
-}
+function loadMoreLogs() { logLimit += 20; loadLogs().then(() => initLogsPage()); }
 
 function initResetRequestsPage() {
     const list = document.getElementById('resetRequestsList');
@@ -1661,22 +1395,15 @@ function initResetRequestsPage() {
     if (!list) return;
     count.textContent = resetRequestsData.length + ' Pending';
     if (resetRequestsData.length === 0) list.innerHTML = '<div class="p-8 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-200"><use href="#icon-check-circle"/></svg><p>No pending requests</p></div>';
-    else list.innerHTML = resetRequestsData.map(req => `<div class="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><svg class="w-5 h-5 text-orange-500"><use href="#icon-key"/></svg></div><div><p class="text-sm font-semibold text-gray-900">${req.resellerName || 'Unknown'} <span class="text-xs text-gray-400">(@${req.resellerUsername || req.resellerId || 'N/A'})</span></p><p class="text-xs text-gray-400 font-mono">${req.resetKey || 'N/A'}</p><p class="text-xs text-gray-400 mt-0.5">${req.createdAt ? new Date(req.createdAt.toDate()).toLocaleString() : 'N/A'}</p></div></div><button onclick="approveReset('${req.id}')" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Approve</button></div>`).join('');
+    else list.innerHTML = resetRequestsData.map(req => `<div class="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><svg class="w-5 h-5 text-orange-500"><use href="#icon-key"/></svg></div><div><p class="text-sm font-semibold text-gray-900">${req.resellerName || 'Unknown'}</p><p class="text-xs text-gray-400 font-mono">${req.resetKey || 'N/A'}</p><p class="text-xs text-gray-400 mt-0.5">${req.createdAt ? new Date(req.createdAt.toDate()).toLocaleString() : 'N/A'}</p></div></div><button onclick="approveReset('${req.id}')" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Approve</button></div>`).join('');
 }
 async function approveReset(id) {
     showLoading(true);
     try {
-        await db.collection('resetRequests').doc(id).update({
-            status: 'approved', 
-            resolvedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        await db.collection('resetRequests').doc(id).update({status: 'approved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp()});
         showToast('Reset request approved','success');
-        await loadResetRequests(); 
-        initResetRequestsPage();
-    } catch(e) { 
-        console.error('Approve reset error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+        await loadResetRequests(); initResetRequestsPage();
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 
@@ -1693,7 +1420,7 @@ function initResellerDashboard() {
             return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p><p class="text-xs ${count < 5 ? 'text-red-500' : 'text-gray-400'} mt-1">${count} left</p></button>`;
         }).join('');
     }
-    const myLogs = logsData.filter(l => l.resellerDocId === userData.docId || l.resellerId === userData.docId || l.resellerId === userData.username);
+    const myLogs = logsData.filter(l => l.resellerDocId === userData.docId || l.resellerId === userData.docId);
     const list = document.getElementById('recentKeysList');
     if (list) {
         if (myLogs.length === 0) list.innerHTML = '<div class="p-8 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-200"><use href="#icon-key"/></svg><p>No keys generated yet</p></div>';
@@ -1713,29 +1440,12 @@ function initStockLeft() {
     }).join('');
 }
 function initResetKey() {
-    // Get ALL reset requests and filter client-side (avoids where query issues)
-    db.collection('resetRequests').get().then(snapshot => {
-        const myReqs = []; 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.resellerDocId === userData.docId) {
-                myReqs.push({id: doc.id, ...data});
-            }
-        });
-        // Sort by createdAt client-side
-        myReqs.sort((a, b) => {
-            const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
-            const bTime = b.createdAt ? b.createdAt.toDate().getTime() : 0;
-            return bTime - aTime;
-        });
+    db.collection('resetRequests').where('resellerDocId','==',userData.docId).orderBy('createdAt','desc').get().then(snapshot => {
+        const myReqs = []; snapshot.forEach(doc => myReqs.push({id: doc.id, ...doc.data()}));
         const list = document.getElementById('myResetRequests');
         if (!list) return;
         if (myReqs.length === 0) list.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No requests yet</div>';
         else list.innerHTML = myReqs.map(req => `<div class="p-4 flex items-center justify-between"><div><p class="text-sm font-mono text-gray-700">${req.resetKey}</p><p class="text-xs text-gray-400">${req.createdAt ? new Date(req.createdAt.toDate()).toLocaleDateString() : 'N/A'}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full ${req.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}">${req.status === 'approved' ? 'Approved' : 'Pending'}</span></div>`).join('');
-    }).catch(err => {
-        console.error('Reset requests load error:', err);
-        const list = document.getElementById('myResetRequests');
-        if (list) list.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">Unable to load requests</div>';
     });
 }
 
@@ -1753,41 +1463,21 @@ async function generateKey(plan) {
     showLoading(true);
     try {
         const updatedKeys = stock.keys.map(k => { if (k.key === availableKey.key) return {...k, used: true, usedBy: userData.docId, usedAt: new Date().toISOString()}; return k; });
-
-        // Use direct doc references (no queries)
         await db.collection('stock').doc(plan).update({keys: updatedKeys});
+        // Atomic decrement to prevent race conditions with admin balance updates
         await db.collection('users').doc(userData.docId).update({balance: firebase.firestore.FieldValue.increment(-price)});
-
         const newBalance = (userData.balance || 0) - price;
-
-        // Add log entry
         await db.collection('logs').add({
-            resellerDocId: userData.docId, 
-            resellerId: userData.username || userData.docId,
-            resellerName: userData.name, 
-            resellerUsername: userData.username || '', 
-            plan, 
-            generatedKey: availableKey.key, 
-            price, 
-            balanceLeft: newBalance, 
+            resellerDocId: userData.docId, resellerId: userData.telegramId || userData.docId,
+            resellerName: userData.name, resellerUsername: userData.username || '', 
+            plan, generatedKey: availableKey.key, price, balanceLeft: newBalance, 
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        // Update local data
         stockData[plan].keys = updatedKeys;
         logsData.unshift({
-            resellerDocId: userData.docId, 
-            resellerId: userData.username || userData.docId,
-            resellerName: userData.name, 
-            plan, 
-            generatedKey: availableKey.key, 
-            price, 
-            balanceLeft: newBalance
+            resellerDocId: userData.docId, resellerId: userData.telegramId || userData.docId,
+            resellerName: userData.name, plan, generatedKey: availableKey.key, price, balanceLeft: newBalance
         });
-
-        // Update userData balance locally
-        userData.balance = newBalance;
-
         document.getElementById('generatedKey').textContent = availableKey.key;
         document.getElementById('generatedPlan').textContent = plan;
         document.getElementById('generatedPrice').textContent = '₹' + price.toFixed(2);
@@ -1795,10 +1485,7 @@ async function generateKey(plan) {
         document.getElementById('keyModal').classList.remove('hidden');
         updateUserBalanceUI();
         showToast('Key generated successfully!','success');
-    } catch(e) { 
-        console.error('Generate key error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 function closeKeyModal() { document.getElementById('keyModal').classList.add('hidden'); initPage(currentPage); }
@@ -1810,21 +1497,15 @@ async function submitResetRequest() {
     showLoading(true);
     try {
         await db.collection('resetRequests').add({
-            resellerDocId: userData.docId, 
-            resellerId: userData.username || userData.docId,
-            resellerName: userData.name, 
-            resellerUsername: userData.username || '', 
-            resetKey: key, 
-            status: 'pending', 
+            resellerDocId: userData.docId, resellerId: userData.telegramId || userData.docId,
+            resellerName: userData.name, resellerUsername: userData.username || '', 
+            resetKey: key, status: 'pending', 
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         showToast('Reset request submitted','success');
         document.getElementById('resetKeyInput').value = '';
         initResetKey();
-    } catch(e) { 
-        console.error('Submit reset error:', e);
-        showToast('Error: ' + e.message,'error'); 
-    }
+    } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
 
