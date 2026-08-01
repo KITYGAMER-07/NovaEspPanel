@@ -857,6 +857,7 @@ const db = firebase.firestore();
                 </div>
                 <div class="bg-primary-50 rounded-xl p-3 flex items-center justify-between"><span class="text-sm text-gray-600">Balance Left</span><span class="font-semibold text-primary" id="generatedBalance">---</span></div>
                 <button onclick="copyGeneratedKey()" class="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"><svg class="w-5 h-5"><use href="#icon-copy"/></svg>Copy Key</button>
+                <button onclick="closeKeyModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"><svg class="w-5 h-5"><use href="#icon-arrow-left"/></svg>Back</button>
             </div>
         </div>
     </div>
@@ -1528,7 +1529,11 @@ async function generateKey(plan) {
     } catch(e) { showToast(e.message,'error'); }
     showLoading(false);
 }
-function closeKeyModal() { document.getElementById('keyModal').classList.add('hidden'); initPage(currentPage); }
+function closeKeyModal() { 
+    document.getElementById('keyModal').classList.add('hidden'); 
+    // Just refresh current page data, don't navigate away
+    initPage(currentPage); 
+}
 function copyGeneratedKey() { copyToClipboard(document.getElementById('generatedKey').textContent); }
 
 async function submitResetRequest() {
