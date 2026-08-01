@@ -73,6 +73,7 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="bg-gray-50 min-h-screen">
 <svg style="display:none">
@@ -962,8 +963,8 @@ async function handleRegister(e) {
             await db.collection('users').doc(telegramId).update({
                 authUid: authUid,
                 email: email,
-                name: name || existing.name || name,
-                username: username || existing.username || username,
+                name: name || existing.name || '',
+                username: username || existing.username || '',
                 role: role,
                 telegramId: telegramId
             });
@@ -971,12 +972,12 @@ async function handleRegister(e) {
         } else {
             // Create fresh doc for new reseller
             await db.collection('users').doc(telegramId).set({
-                name: name,
+                name: name || '',
                 email: email,
                 role: role,
                 balance: 0,
                 telegramId: telegramId,
-                username: username,
+                username: username || '',
                 authUid: authUid,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -1261,7 +1262,7 @@ function renderResellersTable(data) {
     const tbody = document.getElementById('resellersTableBody');
     if (!tbody) return;
     if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No resellers found</td></tr>'; return; }
-    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.telegramId || r.id}</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
+    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || r.username || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || r.username || 'Unnamed'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'} ${r.name ? '• ID: ' + (r.telegramId || r.id) : ''}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.telegramId || r.id}</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
 }
 function filterResellers() {
     const query = document.getElementById('resellerSearch').value.toLowerCase();
@@ -1273,11 +1274,12 @@ async function addReseller(e) {
     const telegramId = document.getElementById('resellerId').value.trim();
     const username = document.getElementById('resellerUsername').value.trim();
     const name = document.getElementById('resellerName').value.trim();
+    if (!telegramId || !name) return showToast('Telegram ID and Name are required','error');
     showLoading(true);
     try {
         await db.collection('users').doc(telegramId).set({
             telegramId: telegramId,
-            username: username,
+            username: username || '',
             name: name,
             email: '',
             role: 'reseller',
