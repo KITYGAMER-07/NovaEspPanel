@@ -73,6 +73,7 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="bg-gray-50 min-h-screen">
 <svg style="display:none">
@@ -323,25 +324,25 @@ const db = firebase.firestore();
             <div id="resellerMenu" class="space-y-1 hidden">
                 <p class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Generate Keys</p>
                 <button onclick="generateKey('5H')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 5H<span class="ml-auto text-xs text-gray-400">₹5</span>
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 5H<span class="ml-auto text-xs text-gray-400" id="menuPrice-5H">₹5</span>
                 </button>
                 <button onclick="generateKey('1D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 1D<span class="ml-auto text-xs text-gray-400">₹10</span>
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 1D<span class="ml-auto text-xs text-gray-400" id="menuPrice-1D">₹10</span>
                 </button>
                 <button onclick="generateKey('3D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 3D<span class="ml-auto text-xs text-gray-400">₹30</span>
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 3D<span class="ml-auto text-xs text-gray-400" id="menuPrice-3D">₹30</span>
                 </button>
                 <button onclick="generateKey('7D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 7D<span class="ml-auto text-xs text-gray-400">₹50</span>
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 7D<span class="ml-auto text-xs text-gray-400" id="menuPrice-7D">₹50</span>
                 </button>
                 <button onclick="generateKey('15D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 15D<span class="ml-auto text-xs text-gray-400">₹90</span>
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 15D<span class="ml-auto text-xs text-gray-400" id="menuPrice-15D">₹90</span>
                 </button>
                 <button onclick="generateKey('30D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 30D<span class="ml-auto text-xs text-gray-400">₹120</span>
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 30D<span class="ml-auto text-xs text-gray-400" id="menuPrice-30D">₹120</span>
                 </button>
                 <button onclick="generateKey('60D')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 60D<span class="ml-auto text-xs text-gray-400">₹200</span>
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-zap"/></svg>Generate 60D<span class="ml-auto text-xs text-gray-400" id="menuPrice-60D">₹200</span>
                 </button>
                 <p class="px-4 py-2 mt-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Account</p>
                 <button onclick="navigateTo('resellerDashboard')" class="sidebar-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="resellerDashboard">
@@ -1090,6 +1091,16 @@ function updateUserBalanceUI() {
     if (userName) userName.textContent = userData.name || 'User';
     const userAvatar = document.getElementById('userAvatar');
     if (userAvatar) userAvatar.textContent = (userData.name || 'U').charAt(0).toUpperCase();
+    // Update reseller menu prices from Firebase
+    updateResellerMenuPrices();
+}
+
+function updateResellerMenuPrices() {
+    Object.keys(planLabels).forEach(plan => {
+        const price = pricesData[plan] !== undefined ? pricesData[plan] : defaultPrices[plan];
+        const el = document.getElementById('menuPrice-' + plan);
+        if (el) el.textContent = '₹' + price;
+    });
 }
 function showDashboard() {
     document.getElementById('authPage').classList.add('hidden');
@@ -1102,12 +1113,14 @@ function showDashboard() {
     } else {
         document.getElementById('ownerMenu').classList.add('hidden');
         document.getElementById('resellerMenu').classList.remove('hidden');
+        // Ensure prices are updated in sidebar before showing
+        updateResellerMenuPrices();
         navigateTo('resellerDashboard');
     }
 }
 
 // ===== NAVIGATION =====
-function navigateTo(page) {
+async function navigateTo(page) {
     currentPage = page;
     const mainContent = document.getElementById('mainContent');
     const template = document.getElementById('page-' + page);
@@ -1124,7 +1137,7 @@ function navigateTo(page) {
     document.getElementById('pageSubtitle').textContent = subtitle;
     document.getElementById('sidebar').classList.add('-translate-x-full');
     document.getElementById('mobileOverlay').classList.add('hidden');
-    setTimeout(() => initPage(page), 50);
+    setTimeout(async () => await initPage(page), 50);
 }
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -1139,7 +1152,7 @@ async function loadAllData() {
     try { 
         await Promise.all([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]);
         // Re-render current page with fresh Firebase data so reload shows correct values
-        initPage(currentPage);
+        await initPage(currentPage);
     }
     catch(e) { console.error(e); }
     showLoading(false);
@@ -1173,10 +1186,10 @@ function updateResetBadge() {
     if (resetRequestsData.length > 0) { badge.textContent = resetRequestsData.length; badge.classList.remove('hidden'); }
     else badge.classList.add('hidden');
 }
-function refreshData() { loadAllData().then(() => { initPage(currentPage); showToast('Data refreshed','success'); }); }
+async function refreshData() { await loadAllData(); await initPage(currentPage); showToast('Data refreshed','success'); }
 
 // ===== PAGE INITIALIZERS =====
-function initPage(page) {
+async function initPage(page) {
     switch(page) {
         case 'dashboard': initDashboard(); break;
         case 'stock': initStockPage(); break;
@@ -1186,9 +1199,9 @@ function initPage(page) {
         case 'broadcast': initBroadcastPage(); break;
         case 'logs': initLogsPage(); break;
         case 'resetRequests': initResetRequestsPage(); break;
-        case 'resellerDashboard': initResellerDashboard(); break;
+        case 'resellerDashboard': await initResellerDashboard(); break;
         case 'myBalance': initMyBalance(); break;
-        case 'stockLeft': initStockLeft(); break;
+        case 'stockLeft': await initStockLeft(); break;
         case 'resetKey': initResetKey(); break;
         case 'help': initHelpPage(); break;
     }
@@ -1408,8 +1421,12 @@ async function approveReset(id) {
 }
 
 // ===== RESELLER FUNCTIONS =====
-function initResellerDashboard() {
+async function initResellerDashboard() {
     document.getElementById('resellerBalanceDisplay').textContent = '₹' + (userData.balance || 0).toFixed(2);
+    // Ensure prices are loaded before rendering
+    if (!pricesData || Object.keys(pricesData).length === 0) {
+        await loadPrices();
+    }
     const grid = document.getElementById('quickGenerateGrid');
     if (grid) {
         grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
@@ -1428,7 +1445,11 @@ function initResellerDashboard() {
     }
 }
 function initMyBalance() { document.getElementById('myBalanceAmount').textContent = '₹' + (userData.balance || 0).toFixed(2); }
-function initStockLeft() {
+async function initStockLeft() {
+    // Ensure prices are loaded
+    if (!pricesData || Object.keys(pricesData).length === 0) {
+        await loadPrices();
+    }
     const grid = document.getElementById('stockLeftGrid');
     if (!grid) return;
     grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
@@ -1454,7 +1475,11 @@ function initHelpPage() {
 }
 
 async function generateKey(plan) {
-    const price = pricesData[plan] || defaultPrices[plan];
+    // Ensure prices are loaded from Firebase
+    if (!pricesData || Object.keys(pricesData).length === 0) {
+        await loadPrices();
+    }
+    const price = pricesData[plan] !== undefined ? pricesData[plan] : defaultPrices[plan];
     if ((userData.balance || 0) < price) return showToast('Insufficient balance','error');
     const stock = stockData[plan];
     if (!stock || !stock.keys) return showToast('No stock available','error');
