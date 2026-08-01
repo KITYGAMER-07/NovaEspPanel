@@ -1159,7 +1159,15 @@ async function loadAllData() {
 }
 async function loadStock() {
     const snapshot = await db.collection('stock').get();
-    stockData = {}; snapshot.forEach(doc => { stockData[doc.id] = doc.data(); });
+    stockData = {}; 
+    snapshot.forEach(doc => { 
+        const data = doc.data();
+        // Ensure keys is always an array
+        if (!data.keys || !Array.isArray(data.keys)) {
+            data.keys = [];
+        }
+        stockData[doc.id] = data; 
+    });
 }
 async function loadPrices() {
     const snapshot = await db.collection('prices').get();
@@ -1212,12 +1220,16 @@ function initDashboard() {
     document.getElementById('statKeys').textContent = logsData.length;
     const revenue = logsData.reduce((sum, log) => sum + (log.price || 0), 0);
     document.getElementById('statRevenue').textContent = '₹' + revenue.toLocaleString();
-    const totalStock = Object.values(stockData).reduce((sum, s) => sum + (s.keys?.filter(k => !k.used)?.length || 0), 0);
+    const totalStock = Object.values(stockData).reduce((sum, s) => {
+        const keys = s?.keys;
+        return sum + (Array.isArray(keys) ? keys.filter(k => !k.used).length : 0);
+    }, 0);
     document.getElementById('statStock').textContent = totalStock;
     const stockGrid = document.getElementById('stockGrid');
     if (stockGrid) {
         stockGrid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
-            const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+            const keys = stockData[plan]?.keys;
+            const count = Array.isArray(keys) ? keys.filter(k => !k.used).length : 0;
             const lowClass = count < 5 ? 'text-red-500' : 'text-gray-900';
             const lowBadge = count < 5 ? '<span class="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">LOW</span>' : '';
             return `<div class="bg-gray-50 rounded-xl p-4 text-center border border-gray-100"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-2xl font-bold ${lowClass} mt-1">${count}</p><p class="text-xs text-gray-400">${label}</p>${lowBadge}</div>`;
@@ -1234,7 +1246,8 @@ function initStockPage() {
     const tbody = document.getElementById('stockTableBody');
     if (tbody) {
         tbody.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
-            const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+            const keys = stockData[plan]?.keys;
+            const count = Array.isArray(keys) ? keys.filter(k => !k.used).length : 0;
             const price = pricesData[plan] || defaultPrices[plan];
             const statusClass = count === 0 ? 'bg-red-50 text-red-600' : count < 5 ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600';
             const statusText = count === 0 ? 'Out of Stock' : count < 5 ? 'Low Stock' : 'Available';
@@ -1256,7 +1269,7 @@ async function uploadStock() {
     const input = document.getElementById('stockKeysInput').value.trim();
     if (!input) return showToast('Enter keys to upload','error');
     const keys = input.split('\n').map(k => k.trim()).filter(k => k);
-    const existing = stockData[selectedPlan]?.keys || [];
+    const existing = (stockData[selectedPlan]?.keys && Array.isArray(stockData[selectedPlan].keys)) ? stockData[selectedPlan].keys : [];
     const newKeys = keys.map(key => ({key, used: false, usedBy: null, usedAt: null}));
     const allKeys = [...existing, ...newKeys];
     showLoading(true);
@@ -1430,8 +1443,9 @@ async function initResellerDashboard() {
     const grid = document.getElementById('quickGenerateGrid');
     if (grid) {
         grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
-            const price = pricesData[plan] || defaultPrices[plan];
-            const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+            const price = pricesData[plan] !== undefined ? pricesData[plan] : defaultPrices[plan];
+            const keys = stockData[plan]?.keys;
+            const count = Array.isArray(keys) ? keys.filter(k => !k.used).length : 0;
             const disabled = count === 0 || (userData.balance || 0) < price;
             const disabledClass = disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary hover:bg-primary-50 cursor-pointer';
             return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p><p class="text-xs ${count < 5 ? 'text-red-500' : 'text-gray-400'} mt-1">${count} left</p></button>`;
@@ -1453,7 +1467,8 @@ async function initStockLeft() {
     const grid = document.getElementById('stockLeftGrid');
     if (!grid) return;
     grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
-        const count = stockData[plan]?.keys?.filter(k => !k.used).length || 0;
+        const keys = stockData[plan]?.keys;
+        const count = Array.isArray(keys) ? keys.filter(k => !k.used).length : 0;
         const price = pricesData[plan] || defaultPrices[plan];
         const canAfford = (userData.balance || 0) >= price;
         const affordClass = canAfford ? 'text-green-500' : 'text-red-500';
@@ -1482,7 +1497,7 @@ async function generateKey(plan) {
     const price = pricesData[plan] !== undefined ? pricesData[plan] : defaultPrices[plan];
     if ((userData.balance || 0) < price) return showToast('Insufficient balance','error');
     const stock = stockData[plan];
-    if (!stock || !stock.keys) return showToast('No stock available','error');
+    if (!stock || !stock.keys || !Array.isArray(stock.keys) || stock.keys.length === 0) return showToast('No stock available','error');
     const availableKey = stock.keys.find(k => !k.used);
     if (!availableKey) return showToast('Out of stock','error');
     showLoading(true);
