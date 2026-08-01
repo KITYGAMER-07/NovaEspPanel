@@ -208,6 +208,21 @@ const db = firebase.firestore();
                         </div>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telegram ID <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-hash"/></svg>
+                            <input type="text" id="regTelegramId" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="123456789 (same as admin added)">
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Enter the same Telegram ID given to admin</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telegram Username</label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-user"/></svg>
+                            <input type="text" id="regUsername" required class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus transition-all" placeholder="@username">
+                        </div>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                         <div class="relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"><use href="#icon-mail"/></svg>
@@ -556,7 +571,7 @@ const db = firebase.firestore();
         </div>
         <div class="p-6">
             <form onsubmit="addReseller(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">User ID / Email</label><input type="text" id="resellerId" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Telegram ID or Email"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Telegram ID</label><input type="text" id="resellerId" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Telegram ID or Email"></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Username</label><input type="text" id="resellerUsername" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="@username"></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label><input type="text" id="resellerName" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none input-focus" placeholder="Full name"></div>
                 <div class="md:col-span-3"><button type="submit" class="btn-primary text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2"><svg class="w-4 h-4"><use href="#icon-check"/></svg>Add Reseller</button></div>
@@ -944,13 +959,42 @@ async function handleRegister(e) {
     btn.disabled = true;
     btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
     try {
-        const name = document.getElementById('regName').value;
-        const email = document.getElementById('regEmail').value;
+        const name = document.getElementById('regName').value.trim();
+        const telegramId = document.getElementById('regTelegramId').value.trim();
+        const username = document.getElementById('regUsername').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
         const password = document.getElementById('regPassword').value;
         const role = document.querySelector('input[name="accountType"]:checked').value;
+
+        if (!telegramId) throw new Error('Telegram ID is required');
+
         const cred = await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection('users').doc(cred.user.uid).set({name, email, role, balance:0, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
-        showToast('Account created!','success');
+        const authUid = cred.user.uid;
+
+        // Check if admin already created a reseller doc with this telegramId
+        const adminDoc = await db.collection('users').doc(telegramId).get();
+
+        if (adminDoc.exists) {
+            // Link Firebase Auth to existing admin-created doc
+            const existing = adminDoc.data();
+            await db.collection('users').doc(telegramId).update({
+                authUid: authUid,
+                email: email,
+                name: name || existing.name,
+                username: username || existing.username,
+                role: role,
+                // Keep existing balance, createdAt etc.
+            });
+            showToast('Account linked! Balance will appear shortly.','success');
+        } else {
+            // Create fresh doc (fallback for customers or unlisted resellers)
+            await db.collection('users').doc(telegramId).set({
+                name, email, role, balance: 0, 
+                telegramId, username, authUid: authUid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showToast('Account created!','success');
+        }
     } catch(err) {
         showToast(err.message,'error');
         btn.disabled = false;
@@ -975,45 +1019,59 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         showLoading(true);
 
-        // Try to get user doc by Firebase Auth UID
-        let doc = await db.collection('users').doc(user.uid).get();
-
-        // If admin created a reseller doc with email/ID before user registered,
-        // migrate it to UID-based doc so balance/stock work correctly
-        if (!doc.exists) {
-            const q = await db.collection('users').where('email','==',user.email).where('role','in',['reseller','customer']).limit(1).get();
+        // 1. Try to find user doc by authUid field
+        let userDoc = null;
+        let q = await db.collection('users').where('authUid', '==', user.uid).limit(1).get();
+        if (!q.empty) {
+            userDoc = q.docs[0];
+        } else {
+            // 2. Fallback: find by email and link authUid
+            q = await db.collection('users').where('email', '==', user.email).limit(1).get();
             if (!q.empty) {
-                const existing = q.docs[0];
-                userData = existing.data();
-                userData.uid = user.uid;
-                await db.collection('users').doc(user.uid).set(userData);
-                await db.collection('users').doc(existing.id).delete();
-                doc = await db.collection('users').doc(user.uid).get();
+                userDoc = q.docs[0];
+                await userDoc.ref.update({ authUid: user.uid });
             }
         }
 
-        if (doc.exists) {
-            userData = doc.data(); userData.uid = user.uid;
-            if (user.email === OWNER_EMAIL) { userData.role = 'owner'; await db.collection('users').doc(user.uid).update({role:'owner'}); }
+        if (userDoc) {
+            userData = userDoc.data();
+            userData.uid = user.uid;
+            userData.docId = userDoc.id; // This is the Firestore doc ID (Telegram ID for resellers)
+            if (user.email === OWNER_EMAIL) { 
+                userData.role = 'owner'; 
+                await userDoc.ref.update({role:'owner'}); 
+            }
         } else {
-            userData = {name: user.displayName||'User', email: user.email, role: 'customer', balance: 0, uid: user.uid};
+            // No existing doc - create new one with UID as doc ID (rare fallback)
+            userData = {
+                name: user.displayName||'User', 
+                email: user.email, 
+                role: 'customer', 
+                balance: 0, 
+                authUid: user.uid,
+                uid: user.uid,
+                docId: user.uid
+            };
             await db.collection('users').doc(user.uid).set(userData);
         }
 
-        // Real-time listener: updates balance & UI instantly when admin changes it
+        // Real-time listener on the CORRECT doc (admin uses Telegram ID as doc ID)
         if (userUnsubscribe) userUnsubscribe();
-        userUnsubscribe = db.collection('users').doc(user.uid).onSnapshot(doc => {
+        userUnsubscribe = db.collection('users').doc(userData.docId).onSnapshot(doc => {
             if (doc.exists) {
+                const oldBal = userData?.balance;
                 userData = doc.data();
-                userData.uid = user.uid;
+                userData.uid = currentUser.uid;
+                userData.docId = doc.id;
                 updateUserBalanceUI();
-                if (['resellerDashboard','myBalance','stockLeft','resetKey'].includes(currentPage)) {
+                // Refresh reseller pages if balance changed
+                if (oldBal !== userData.balance && ['resellerDashboard','myBalance','stockLeft','resetKey'].includes(currentPage)) {
                     initPage(currentPage);
                 }
             }
         });
 
-        // Load all global data (stock, prices, resellers, logs) BEFORE rendering page
+        // Load ALL Firebase data BEFORE showing dashboard so nothing is empty
         await loadAllData();
         showLoading(false);
         showDashboard();
@@ -1025,15 +1083,16 @@ auth.onAuthStateChanged(async (user) => {
 
 function showAuth() { document.getElementById('authPage').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
 function updateUserBalanceUI() {
-    const bal = (userData?.balance || 0).toFixed(2);
+    if (!userData) return;
+    const bal = (userData.balance || 0).toFixed(2);
     const headerBal = document.getElementById('headerBalance');
     if (headerBal) headerBal.textContent = '₹' + bal;
     const userRole = document.getElementById('userRole');
-    if (userRole) userRole.textContent = userData?.role === 'owner' ? 'Owner' : 'Reseller';
+    if (userRole) userRole.textContent = userData.role === 'owner' ? 'Owner' : 'Reseller';
     const userName = document.getElementById('userName');
-    if (userName) userName.textContent = userData?.name || 'User';
+    if (userName) userName.textContent = userData.name || 'User';
     const userAvatar = document.getElementById('userAvatar');
-    if (userAvatar) userAvatar.textContent = (userData?.name || 'U').charAt(0).toUpperCase();
+    if (userAvatar) userAvatar.textContent = (userData.name || 'U').charAt(0).toUpperCase();
 }
 function showDashboard() {
     document.getElementById('authPage').classList.add('hidden');
@@ -1082,7 +1141,7 @@ async function loadAllData() {
     showLoading(true);
     try { 
         await Promise.all([loadStock(), loadPrices(), loadResellers(), loadLogs(), loadResetRequests()]);
-        // Re-render current page so stock/prices/logs reflect fresh Firebase data
+        // Re-render current page with fresh Firebase data so reload shows correct values
         initPage(currentPage);
     }
     catch(e) { console.error(e); }
@@ -1205,7 +1264,7 @@ function renderResellersTable(data) {
     const tbody = document.getElementById('resellersTableBody');
     if (!tbody) return;
     if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No resellers found</td></tr>'; return; }
-    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.id.substring(0,8)}...</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
+    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.telegramId || r.id}</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
 }
 function filterResellers() {
     const query = document.getElementById('resellerSearch').value.toLowerCase();
@@ -1214,12 +1273,17 @@ function filterResellers() {
 }
 async function addReseller(e) {
     e.preventDefault();
-    const id = document.getElementById('resellerId').value.trim();
+    const telegramId = document.getElementById('resellerId').value.trim();
     const username = document.getElementById('resellerUsername').value.trim();
     const name = document.getElementById('resellerName').value.trim();
     showLoading(true);
     try {
-        await db.collection('users').doc(id).set({name, username, email: id.includes('@') ? id : id+'@temp.com', role: 'reseller', balance: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+        await db.collection('users').doc(telegramId).set({
+            telegramId, username, name, 
+            email: telegramId.includes('@') ? telegramId : telegramId+'@temp.com', 
+            role: 'reseller', balance: 0, 
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         showToast('Reseller added successfully','success');
         document.getElementById('resellerId').value = ''; document.getElementById('resellerUsername').value = ''; document.getElementById('resellerName').value = '';
         await loadResellers(); initResellersPage();
@@ -1356,7 +1420,7 @@ function initResellerDashboard() {
             return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p><p class="text-xs ${count < 5 ? 'text-red-500' : 'text-gray-400'} mt-1">${count} left</p></button>`;
         }).join('');
     }
-    const myLogs = logsData.filter(l => l.resellerId === currentUser.uid);
+    const myLogs = logsData.filter(l => l.resellerDocId === userData.docId || l.resellerId === userData.docId);
     const list = document.getElementById('recentKeysList');
     if (list) {
         if (myLogs.length === 0) list.innerHTML = '<div class="p-8 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-200"><use href="#icon-key"/></svg><p>No keys generated yet</p></div>';
@@ -1376,7 +1440,7 @@ function initStockLeft() {
     }).join('');
 }
 function initResetKey() {
-    db.collection('resetRequests').where('resellerId','==',currentUser.uid).orderBy('createdAt','desc').get().then(snapshot => {
+    db.collection('resetRequests').where('resellerDocId','==',userData.docId).orderBy('createdAt','desc').get().then(snapshot => {
         const myReqs = []; snapshot.forEach(doc => myReqs.push({id: doc.id, ...doc.data()}));
         const list = document.getElementById('myResetRequests');
         if (!list) return;
@@ -1398,20 +1462,27 @@ async function generateKey(plan) {
     if (!availableKey) return showToast('Out of stock','error');
     showLoading(true);
     try {
-        const updatedKeys = stock.keys.map(k => { if (k.key === availableKey.key) return {...k, used: true, usedBy: currentUser.uid, usedAt: new Date().toISOString()}; return k; });
+        const updatedKeys = stock.keys.map(k => { if (k.key === availableKey.key) return {...k, used: true, usedBy: userData.docId, usedAt: new Date().toISOString()}; return k; });
         await db.collection('stock').doc(plan).update({keys: updatedKeys});
-        // Use atomic increment to prevent race conditions if admin adds balance simultaneously
-        await db.collection('users').doc(currentUser.uid).update({balance: firebase.firestore.FieldValue.increment(-price)});
+        // Atomic decrement to prevent race conditions with admin balance updates
+        await db.collection('users').doc(userData.docId).update({balance: firebase.firestore.FieldValue.increment(-price)});
         const newBalance = (userData.balance || 0) - price;
-        await db.collection('logs').add({resellerId: currentUser.uid, resellerName: userData.name, resellerUsername: userData.username || '', plan, generatedKey: availableKey.key, price, balanceLeft: newBalance, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+        await db.collection('logs').add({
+            resellerDocId: userData.docId, resellerId: userData.telegramId || userData.docId,
+            resellerName: userData.name, resellerUsername: userData.username || '', 
+            plan, generatedKey: availableKey.key, price, balanceLeft: newBalance, 
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         stockData[plan].keys = updatedKeys;
-        logsData.unshift({resellerId: currentUser.uid, resellerName: userData.name, plan, generatedKey: availableKey.key, price, balanceLeft: newBalance});
+        logsData.unshift({
+            resellerDocId: userData.docId, resellerId: userData.telegramId || userData.docId,
+            resellerName: userData.name, plan, generatedKey: availableKey.key, price, balanceLeft: newBalance
+        });
         document.getElementById('generatedKey').textContent = availableKey.key;
         document.getElementById('generatedPlan').textContent = plan;
         document.getElementById('generatedPrice').textContent = '₹' + price.toFixed(2);
         document.getElementById('generatedBalance').textContent = '₹' + newBalance.toFixed(2);
         document.getElementById('keyModal').classList.remove('hidden');
-        // Balance UI will auto-update via onSnapshot, but update immediately for modal feel
         updateUserBalanceUI();
         showToast('Key generated successfully!','success');
     } catch(e) { showToast(e.message,'error'); }
@@ -1425,7 +1496,12 @@ async function submitResetRequest() {
     if (!key) return showToast('Enter a key','error');
     showLoading(true);
     try {
-        await db.collection('resetRequests').add({resellerId: currentUser.uid, resellerName: userData.name, resellerUsername: userData.username || '', resetKey: key, status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+        await db.collection('resetRequests').add({
+            resellerDocId: userData.docId, resellerId: userData.telegramId || userData.docId,
+            resellerName: userData.name, resellerUsername: userData.username || '', 
+            resetKey: key, status: 'pending', 
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         showToast('Reset request submitted','success');
         document.getElementById('resetKeyInput').value = '';
         initResetKey();
