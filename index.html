@@ -1092,37 +1092,33 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         showLoading(true);
 
-        // 1. Try to find user doc by authUid field (single query - should work with basic rules)
+        // Strategy: Try direct doc access ONLY - no queries
         let userDoc = null;
-        try {
-            let q = await db.collection('users').where('authUid', '==', user.uid).limit(1).get();
-            if (!q.empty) {
-                userDoc = q.docs[0];
-            } else {
-                // 2. Fallback: find by email
-                q = await db.collection('users').where('email', '==', user.email).limit(1).get();
-                if (!q.empty) {
-                    userDoc = q.docs[0];
-                    await userDoc.ref.update({ authUid: user.uid, email: user.email });
-                }
-            }
-        } catch (queryErr) {
-            console.error('Query error (permissions?):', queryErr);
-            // If queries fail, try direct doc access by known patterns
-            const possibleIds = [
-                user.email ? user.email.replace(/\./g, '_') : null,
-                user.displayName ? user.displayName.toLowerCase().replace(/\s/g, '') : null
-            ].filter(Boolean);
+        let foundId = null;
 
-            for (const testId of possibleIds) {
-                try {
-                    const directDoc = await db.collection('users').doc(testId).get();
-                    if (directDoc.exists) {
-                        userDoc = directDoc;
-                        await directDoc.ref.update({ authUid: user.uid });
-                        break;
-                    }
-                } catch (e) { /* continue */ }
+        // Try multiple possible document IDs
+        const possibleIds = [
+            user.email ? user.email.replace(/\./g, '_') : null,
+            user.displayName ? user.displayName.toLowerCase().replace(/\s/g, '') : null,
+            user.uid
+        ].filter(Boolean);
+
+        // Also try to get username from login form
+        const loginUsernameEl = document.getElementById('loginUsername');
+        if (loginUsernameEl && loginUsernameEl.value.trim()) {
+            possibleIds.unshift(loginUsernameEl.value.trim().toLowerCase());
+        }
+
+        for (const testId of possibleIds) {
+            try {
+                const directDoc = await db.collection('users').doc(testId).get();
+                if (directDoc.exists) {
+                    userDoc = directDoc;
+                    foundId = testId;
+                    break;
+                }
+            } catch (e) { 
+                console.log('Doc access failed for ID:', testId, e.message);
             }
         }
 
@@ -1130,26 +1126,46 @@ auth.onAuthStateChanged(async (user) => {
             userData = userDoc.data();
             userData.uid = user.uid;
             userData.docId = userDoc.id;
-            // Fix: Update email if it's temp/missing
-            if (user.email && (!userData.email || userData.email.includes('@temp.com') || userData.email === '')) {
-                await userDoc.ref.update({ email: user.email });
-                userData.email = user.email;
+
+            // Link authUid if missing
+            if (!userData.authUid) {
+                try {
+                    await userDoc.ref.update({ authUid: user.uid });
+                    userData.authUid = user.uid;
+                } catch (e) { console.log('Could not update authUid:', e.message); }
             }
-            // Update username on every login
-            if (!userData.username || userData.username === '') {
-                const loginUsername = document.getElementById('loginUsername');
-                if (loginUsername && loginUsername.value.trim()) {
-                    await userDoc.ref.update({ username: loginUsername.value.trim().toLowerCase() });
-                    userData.username = loginUsername.value.trim().toLowerCase();
+
+            // Fix email if temp/missing
+            if (user.email && (!userData.email || userData.email.includes('@temp.com') || userData.email === '')) {
+                try {
+                    await userDoc.ref.update({ email: user.email });
+                    userData.email = user.email;
+                } catch (e) { console.log('Could not update email:', e.message); }
+            }
+
+            // Update username from login form
+            if (loginUsernameEl && loginUsernameEl.value.trim()) {
+                const formUsername = loginUsernameEl.value.trim().toLowerCase();
+                if (!userData.username || userData.username === '') {
+                    try {
+                        await userDoc.ref.update({ username: formUsername });
+                        userData.username = formUsername;
+                    } catch (e) { console.log('Could not update username:', e.message); }
                 }
             }
+
             if (user.email === OWNER_EMAIL) { 
                 userData.role = 'owner'; 
-                await userDoc.ref.update({role:'owner'}); 
+                try {
+                    await userDoc.ref.update({role:'owner'});
+                } catch (e) { console.log('Could not update role:', e.message); }
             }
         } else {
             // No existing doc - create new reseller doc
-            const docId = user.email ? user.email.replace(/\./g, '_') : user.uid;
+            const docId = loginUsernameEl && loginUsernameEl.value.trim() 
+                ? loginUsernameEl.value.trim().toLowerCase() 
+                : (user.email ? user.email.replace(/\./g, '_') : user.uid);
+
             userData = {
                 name: user.displayName || 'User',
                 email: user.email,
@@ -1159,7 +1175,7 @@ auth.onAuthStateChanged(async (user) => {
                 uid: user.uid,
                 docId: docId,
                 telegramId: '',
-                username: '',
+                username: loginUsernameEl ? loginUsernameEl.value.trim().toLowerCase() : '',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             try {
@@ -1173,7 +1189,7 @@ auth.onAuthStateChanged(async (user) => {
             }
         }
 
-        // Real-time listener on the CORRECT doc (direct doc access - no query)
+        // Real-time listener on the CORRECT doc (direct doc access only)
         if (userUnsubscribe) userUnsubscribe();
         const listenerDocId = userData.docId || userData.username || user.uid;
         try {
@@ -1195,7 +1211,7 @@ auth.onAuthStateChanged(async (user) => {
             console.error('Failed to attach listener:', listenErr);
         }
 
-        // Load ALL Firebase data BEFORE showing dashboard
+        // Load data
         try {
             await loadAllData();
         } catch (loadErr) {
@@ -1306,8 +1322,15 @@ async function loadPrices() {
 }
 async function loadResellers() {
     try {
-        const snapshot = await db.collection('users').where('role','==','reseller').get();
-        resellersData = []; snapshot.forEach(doc => { resellersData.push({id: doc.id, ...doc.data()}); });
+        // Get ALL users and filter client-side (avoids query index issues)
+        const snapshot = await db.collection('users').get();
+        resellersData = []; 
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.role === 'reseller') {
+                resellersData.push({id: doc.id, ...data});
+            }
+        });
     } catch (err) {
         console.error('Load resellers error:', err);
         resellersData = [];
@@ -1315,14 +1338,18 @@ async function loadResellers() {
 }
 async function loadLogs() {
     try {
-        const snapshot = await db.collection('logs').limit(logLimit).get();
-        logsData = []; snapshot.forEach(doc => { logsData.push({id: doc.id, ...doc.data()}); });
+        // Get all logs and sort client-side (avoids composite index)
+        const snapshot = await db.collection('logs').get();
+        logsData = []; 
+        snapshot.forEach(doc => { logsData.push({id: doc.id, ...doc.data()}); });
         // Sort client-side by createdAt
         logsData.sort((a, b) => {
             const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
             const bTime = b.createdAt ? b.createdAt.toDate().getTime() : 0;
             return bTime - aTime;
         });
+        // Apply limit client-side
+        logsData = logsData.slice(0, logLimit);
     } catch (err) {
         console.error('Load logs error:', err);
         logsData = [];
@@ -1330,8 +1357,15 @@ async function loadLogs() {
 }
 async function loadResetRequests() {
     try {
-        const snapshot = await db.collection('resetRequests').where('status','==','pending').get();
-        resetRequestsData = []; snapshot.forEach(doc => { resetRequestsData.push({id: doc.id, ...doc.data()}); });
+        // Get ALL reset requests and filter/sort client-side
+        const snapshot = await db.collection('resetRequests').get();
+        resetRequestsData = []; 
+        snapshot.forEach(doc => { 
+            const data = doc.data();
+            if (data.status === 'pending') {
+                resetRequestsData.push({id: doc.id, ...data});
+            }
+        });
         // Sort client-side
         resetRequestsData.sort((a, b) => {
             const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
@@ -1679,9 +1713,15 @@ function initStockLeft() {
     }).join('');
 }
 function initResetKey() {
-    // Remove orderBy to avoid composite index requirement - sort client-side instead
-    db.collection('resetRequests').where('resellerDocId','==',userData.docId).get().then(snapshot => {
-        const myReqs = []; snapshot.forEach(doc => myReqs.push({id: doc.id, ...doc.data()}));
+    // Get ALL reset requests and filter client-side (avoids where query issues)
+    db.collection('resetRequests').get().then(snapshot => {
+        const myReqs = []; 
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.resellerDocId === userData.docId) {
+                myReqs.push({id: doc.id, ...data});
+            }
+        });
         // Sort by createdAt client-side
         myReqs.sort((a, b) => {
             const aTime = a.createdAt ? a.createdAt.toDate().getTime() : 0;
