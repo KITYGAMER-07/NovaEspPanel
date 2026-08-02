@@ -76,6 +76,7 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="bg-gray-50 min-h-screen">
 <svg style="display:none">
@@ -359,7 +360,7 @@ const db = firebase.firestore();
                     <svg class="w-5 h-5 text-gray-400"><use href="#icon-wallet"/></svg>My Balance
                 </button>
                 <button onclick="navigateTo('stockLeft')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="stockLeft">
-                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-stock"/></svg>Stock Left
+                    <svg class="w-5 h-5 text-gray-400"><use href="#icon-stock"/></svg>Pricing
                 </button>
                 <button onclick="navigateTo('resetKey')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700" data-page="resetKey">
                     <svg class="w-5 h-5 text-gray-400"><use href="#icon-rotate-ccw"/></svg>Reset Key
@@ -802,7 +803,7 @@ const db = firebase.firestore();
         <div class="p-6 border-b border-gray-50">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><svg class="w-5 h-5 text-primary"><use href="#icon-stock"/></svg></div>
-                <div><h3 class="font-display text-lg font-bold text-gray-900">Stock Availability</h3><p class="text-sm text-gray-400">Available keys and pricing</p></div>
+                <div><h3 class="font-display text-lg font-bold text-gray-900">Plan Pricing</h3><p class="text-sm text-gray-400">Current prices for all plans</p></div>
             </div>
         </div>
         <div class="p-6"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="stockLeftGrid"></div></div>
@@ -1138,7 +1139,7 @@ async function navigateTo(page) {
         'dashboard': ['Dashboard','Overview of your panel'],'stock': ['Stock Management','Upload and manage keys'],'resellers': ['Resellers','Manage reseller accounts'],
         'prices': ['Set Prices','Configure plan pricing'],'balance': ['Balance Control','Add or remove balance'],'broadcast': ['Broadcast','Message all resellers'],
         'logs': ['Activity Logs','Key generation history'],'resetRequests': ['Reset Requests','Pending key resets'],'help': ['Help Center','Documentation and guides'],
-        'resellerDashboard': ['My Dashboard','Generate keys quickly'],'myBalance': ['My Balance','Account balance details'],'stockLeft': ['Stock Left','Available keys and prices'],'resetKey': ['Reset Key','Request key reset']
+        'resellerDashboard': ['My Dashboard','Generate keys quickly'],'myBalance': ['My Balance','Account balance details'],'stockLeft': ['Pricing','Plan prices and affordability'],'resetKey': ['Reset Key','Request key reset']
     };
     const [title, subtitle] = titles[page] || ['Panel',''];
     document.getElementById('pageTitle').textContent = title;
@@ -1456,7 +1457,7 @@ async function initResellerDashboard() {
             const count = Array.isArray(keys) ? keys.filter(k => !k.used).length : 0;
             const disabled = count === 0 || (userData.balance || 0) < price;
             const disabledClass = disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary hover:bg-primary-50 cursor-pointer';
-            return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p><p class="text-xs ${count < 5 ? 'text-red-500' : 'text-gray-400'} mt-1">${count} left</p></button>`;
+            return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p></button>`;
         }).join('');
     }
     const myLogs = logsData.filter(l => l.resellerDocId === userData.docId || l.resellerId === userData.docId);
@@ -1475,12 +1476,10 @@ async function initStockLeft() {
     const grid = document.getElementById('stockLeftGrid');
     if (!grid) return;
     grid.innerHTML = Object.entries(planLabels).map(([plan, label]) => {
-        const keys = stockData[plan]?.keys;
-        const count = Array.isArray(keys) ? keys.filter(k => !k.used).length : 0;
         const price = pricesData[plan] || defaultPrices[plan];
         const canAfford = (userData.balance || 0) >= price;
         const affordClass = canAfford ? 'text-green-500' : 'text-red-500';
-        return `<div class="bg-gray-50 rounded-xl p-5 border border-gray-100 card-hover"><div class="flex items-center justify-between mb-3"><span class="font-display font-bold text-gray-900">${plan}</span><span class="text-xs text-gray-400">${label}</span></div><p class="text-3xl font-bold ${count < 5 ? 'text-red-500' : 'text-gray-900'}">${count}</p><p class="text-xs text-gray-400 mt-1">keys available</p><div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between"><span class="text-sm font-semibold text-primary">₹${price}</span><span class="text-xs ${affordClass} font-medium">${canAfford ? 'Affordable' : 'Insufficient'}</span></div></div>`;
+        return `<div class="bg-gray-50 rounded-xl p-5 border border-gray-100 card-hover"><div class="flex items-center justify-between mb-3"><span class="font-display font-bold text-gray-900">${plan}</span><span class="text-xs text-gray-400">${label}</span></div><div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between"><span class="text-sm font-semibold text-primary">₹${price}</span><span class="text-xs ${affordClass} font-medium">${canAfford ? 'Affordable' : 'Insufficient'}</span></div></div>`;
     }).join('');
 }
 function initResetKey() {
