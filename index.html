@@ -76,6 +76,7 @@ body { font-family: 'Inter', sans-serif; background: #F8FAFB; }
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="bg-gray-50 min-h-screen">
 <svg style="display:none">
@@ -1456,7 +1457,7 @@ async function initResellerDashboard() {
             const count = Array.isArray(keys) ? keys.filter(k => !k.used).length : 0;
             const disabled = count === 0 || (userData.balance || 0) < price;
             const disabledClass = disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary hover:bg-primary-50 cursor-pointer';
-            return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p><p class="text-xs ${count < 5 ? 'text-red-500' : 'text-gray-400'} mt-1">${count} left</p></button>`;
+            return `<button onclick="${disabled ? '' : `generateKey('${plan}')`}" class="p-4 rounded-xl border-2 border-gray-200 ${disabledClass} transition-all text-center"><p class="font-display font-bold text-gray-900">${plan}</p><p class="text-xs text-gray-400 mt-1">${label}</p><p class="text-sm font-semibold text-primary mt-2">₹${price}</p><!-- stock count hidden --></button>`;
         }).join('');
     }
     const myLogs = logsData.filter(l => l.resellerDocId === userData.docId || l.resellerId === userData.docId);
@@ -1480,7 +1481,7 @@ async function initStockLeft() {
         const price = pricesData[plan] || defaultPrices[plan];
         const canAfford = (userData.balance || 0) >= price;
         const affordClass = canAfford ? 'text-green-500' : 'text-red-500';
-        return `<div class="bg-gray-50 rounded-xl p-5 border border-gray-100 card-hover"><div class="flex items-center justify-between mb-3"><span class="font-display font-bold text-gray-900">${plan}</span><span class="text-xs text-gray-400">${label}</span></div><p class="text-3xl font-bold ${count < 5 ? 'text-red-500' : 'text-gray-900'}">${count}</p><p class="text-xs text-gray-400 mt-1">keys available</p><div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between"><span class="text-sm font-semibold text-primary">₹${price}</span><span class="text-xs ${affordClass} font-medium">${canAfford ? 'Affordable' : 'Insufficient'}</span></div></div>`;
+        return `<div class="bg-gray-50 rounded-xl p-5 border border-gray-100 card-hover"><div class="flex items-center justify-between mb-3"><span class="font-display font-bold text-gray-900">${plan}</span><span class="text-xs text-gray-400">${label}</span></div><p class="text-3xl font-bold text-gray-400">--</p><p class="text-xs text-gray-400 mt-1">Stock hidden</p><div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between"><span class="text-sm font-semibold text-primary">₹${price}</span><span class="text-xs ${affordClass} font-medium">${canAfford ? 'Affordable' : 'Insufficient'}</span></div></div>`;
     }).join('');
 }
 function initResetKey() {
