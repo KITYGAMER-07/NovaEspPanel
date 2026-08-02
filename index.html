@@ -937,41 +937,7 @@ async function handleLogin(e) {
     btn.disabled = true;
     btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
     try {
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
-
-        // First sign in to get user info
-        const cred = await auth.signInWithEmailAndPassword(email, password);
-
-        // Check if this is owner (owner can use multiple devices)
-        const userDoc = await db.collection('users').where('email', '==', email).limit(1).get();
-        let isOwner = false;
-        let userDocId = cred.user.uid;
-
-        if (!userDoc.empty) {
-            const data = userDoc.docs[0].data();
-            isOwner = data.role === 'owner' || email === OWNER_EMAIL;
-            userDocId = userDoc.docs[0].id;
-        }
-
-        // Generate device fingerprint from this browser in real-time
-        const deviceId = getDeviceId();
-
-        // Check device session (skip for owner)
-        if (!isOwner) {
-            const sessionCheck = await checkDeviceSession(userDocId);
-            if (!sessionCheck.allowed) {
-                // Sign out immediately and show error
-                await auth.signOut();
-                showToast(sessionCheck.message, 'error');
-                btn.disabled = false;
-                btn.innerHTML = '<svg class="w-5 h-5"><use href="#icon-arrow-right"/></svg><span>Sign In</span>';
-                return;
-            }
-            // Set device session
-            await setDeviceSession(userDocId, deviceId);
-        }
-
+        await auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
         showToast('Welcome back!','success');
     } catch(err) {
         showToast(err.message,'error');
@@ -1042,118 +1008,7 @@ async function handleForgotPassword(e) {
     } catch(err) { showToast(err.message,'error'); }
     btn.disabled = false;
 }
-
-// ===== SINGLE SESSION LOGIN (Only one active session per account) =====
-function generateSessionToken() {
-    // Generate a cryptographically random session token
-    const array = new Uint8Array(16);
-    crypto.getRandomValues(array);
-    return 'sess_' + Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-}
-
-async function checkActiveSession(userId) {
-    try {
-        const doc = await db.collection('users').doc(userId).get();
-        if (!doc.exists) return { allowed: true };
-        const data = doc.data();
-        // Owner can have multiple sessions
-        if (data.role === 'owner') return { allowed: true };
-
-        const activeSession = data.activeSession;
-
-        // If no active session, allow login
-        if (!activeSession || !activeSession.token) return { allowed: true, firstLogin: true };
-
-        // Check if session is expired (older than 24 hours = stale)
-        const sessionAge = activeSession.timestamp ? 
-            (Date.now() - activeSession.timestamp.toDate().getTime()) : 0;
-        if (sessionAge > 24 * 60 * 60 * 1000) {
-            // Session is stale, allow new login
-            return { allowed: true, firstLogin: true };
-        }
-
-        // Active session exists and is recent - BLOCK new login
-        return { 
-            allowed: false, 
-            message: 'This account is already logged in on another device/browser. Please logout from the other device first, or contact admin.' 
-        };
-    } catch(e) {
-        return { allowed: true };
-    }
-}
-
-async function setActiveSession(userId, token) {
-    try {
-        await db.collection('users').doc(userId).update({
-            activeSession: {
-                token: token,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                userAgent: navigator.userAgent,
-                platform: navigator.platform
-            },
-            lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    } catch(e) { console.error('Failed to set active session:', e); }
-}
-
-async function clearActiveSession(userId) {
-    try {
-        await db.collection('users').doc(userId).update({
-            activeSession: firebase.firestore.FieldValue.delete(),
-            lastLogoutAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    } catch(e) { console.error('Failed to clear active session:', e); }
-}
-
-async function forceLogoutReseller(userId) {
-    showLoading(true);
-    try {
-        await db.collection('users').doc(userId).update({
-            activeSession: firebase.firestore.FieldValue.delete(),
-            forceLogoutAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        showToast('Reseller logged out. They can now login from any device.','success');
-    } catch(e) { showToast(e.message,'error'); }
-    showLoading(false);
-}
-
-// Real-time session listener - kicks out user if someone else logs in
-let sessionListener = null;
-let currentSessionToken = null;
-
-function startSessionListener(userId) {
-    if (sessionListener) sessionListener();
-
-    sessionListener = db.collection('users').doc(userId).onSnapshot(doc => {
-        if (!doc.exists || !currentUser) return;
-        const data = doc.data();
-        if (data.role === 'owner') return; // Skip for owner
-
-        const activeSession = data.activeSession;
-
-        // If activeSession is deleted or token changed (someone else logged in), logout
-        if (!activeSession || !activeSession.token || activeSession.token !== currentSessionToken) {
-            showToast('Your session was terminated. Another login detected.', 'error');
-            setTimeout(() => { auth.signOut(); }, 2000);
-        }
-    }, err => {
-        console.error('Session listener error:', err);
-    });
-}
-
-function stopSessionListener() {
-    if (sessionListener) { sessionListener(); sessionListener = null; }
-    currentSessionToken = null;
-}
-
-async function logout() { 
-    if (currentUser && userData) {
-        await clearActiveSession(userData.docId || userData.telegramId || currentUser.uid);
-    }
-    stopSessionListener();
-    auth.signOut(); 
-    showToast('Logged out','info'); 
-}
+function logout() { auth.signOut(); showToast('Logged out','info'); }
 
 // ===== AUTH STATE =====
 auth.onAuthStateChanged(async (user) => {
@@ -1188,11 +1043,6 @@ auth.onAuthStateChanged(async (user) => {
                 userData.role = 'owner'; 
                 await userDoc.ref.update({role:'owner'}); 
             }
-
-            // Start real-time session listener for non-owner users
-            if (userData.role !== 'owner') {
-                startSessionListener(userDoc.id);
-            }
         } else {
             // No existing doc - create new reseller doc
             const docId = user.email ? user.email.replace(/\./g, '_') : user.uid;
@@ -1209,8 +1059,6 @@ auth.onAuthStateChanged(async (user) => {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             await db.collection('users').doc(docId).set(userData);
-            // Start session listener for new reseller
-            startSessionListener(docId);
         }
 
         // Real-time listener on the CORRECT doc (admin uses Telegram ID as doc ID)
@@ -1236,7 +1084,6 @@ auth.onAuthStateChanged(async (user) => {
         showDashboard();
     } else {
         if (userUnsubscribe) { userUnsubscribe(); userUnsubscribe = null; }
-        stopSessionListener();
         currentUser = null; userData = null; showAuth();
     }
 });
@@ -1449,13 +1296,7 @@ function renderResellersTable(data) {
     const tbody = document.getElementById('resellersTableBody');
     if (!tbody) return;
     if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No resellers found</td></tr>'; return; }
-    tbody.innerHTML = data.map(r => {
-        const isOnline = r.activeSession && r.activeSession.token ? true : false;
-        const statusDot = isOnline ? `<span class="w-2 h-2 rounded-full bg-green-500 status-dot inline-block mr-1"></span>` : `<span class="w-2 h-2 rounded-full bg-gray-300 inline-block mr-1"></span>`;
-        const statusText = isOnline ? 'Online' : 'Offline';
-        const forceLogoutBtn = `<button onclick="forceLogoutReseller('${r.id}')" class="p-2 hover:bg-orange-50 rounded-lg text-gray-400 hover:text-orange-500 transition-colors mr-1" title="Force Logout / End Session"><svg class="w-4 h-4"><use href="#icon-logout"/></svg></button>`;
-        return `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.telegramId || r.id}</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}<div class="text-xs mt-1">${statusDot}${statusText}</div></td><td class="px-6 py-4 text-right flex items-center justify-end">${forceLogoutBtn}<button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`;
-    }).join('');
+    tbody.innerHTML = data.map(r => `<tr class="hover:bg-gray-50 transition-colors"><td class="px-6 py-4"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${(r.name || 'U').charAt(0)}</div><div><p class="text-sm font-semibold text-gray-900">${r.name || 'N/A'}</p><p class="text-xs text-gray-400">@${r.username || 'N/A'}</p></div></div></td><td class="px-6 py-4 text-sm text-gray-600 font-mono">${r.telegramId || r.id}</td><td class="px-6 py-4 font-semibold text-primary">₹${(r.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sm text-gray-400">${r.createdAt ? new Date(r.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 text-right"><button onclick="confirmRemoveReseller('${r.id}','${r.name}')" class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><svg class="w-4 h-4"><use href="#icon-trash"/></svg></button></td></tr>`).join('');
 }
 function filterResellers() {
     const query = document.getElementById('resellerSearch').value.toLowerCase();
